@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大学生活助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding: 30px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            transform: rotate(30deg);
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 2;
+        }
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 2;
+        }
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 2;
+        }
+        .login-btn, .logout-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.25);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        .login-btn:hover, .logout-btn:hover {
+            background: rgba(255,255,255,0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .username-display {
+            font-weight: bold;
+            background: rgba(255,255,255,0.25);
+            padding: 8px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 15px 30px;
+            background: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tab-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .tab-btn i {
+            font-size: 18px;
+        }
+        .content-section {
+            display: none;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease;
+            min-height: 500px;
+        }
+        .content-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* 论坛样式 */
+        .forum-container {
+            display: grid;
+            gap: 25px;
+        }
+        .post-form {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .post-form textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            resize: vertical;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        .post-form textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        .post-form button {
+            margin-top: 15px;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .post-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .post-item {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .post-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-left-color: #764ba2;
+        }
+        .post-item::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+        .post-item:hover::before {
+            transform: scaleX(1);
+        }
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #444;
+        }
+        .post-content {
+            line-height: 1.7;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .post-meta {
+            font-size: 13px;
+            color: #777;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .post-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .like-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+            transition: all 0.3s ease;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+        .like-btn:hover {
+            color: #ff4757;
+            background: rgba(255,71,87,0.1);
+        }
+        .like-btn.liked {
+            color: #ff4757;
+        }
+        .like-count {
+            font-weight: bold;
+            color: #ff4757;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ff4757;
+            font-size: 15px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        .delete-btn:hover {
+            background: rgba(255,71,87,0.1);
+        }
+        /* 帖子详情样式（通用：论坛+妙招） */
+        .detail-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .back-button {
+            margin-bottom: 25px;
+            padding: 12px 25px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .back-button:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+        .comments-section {
+            margin-top: 30px;
+        }
+        .comment-form {
+            background: #e9ecef;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        .comment-form textarea {
+            width: 100%;
+            height: 100px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            resize: vertical;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .comment-item {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #444;
+        }
+        .comment-content {
+            line-height: 1.6;
+            color: #555;
+        }
+        /* 生活小妙招样式 */
+        .tips-add-form {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        .tips-filter {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .tips-filter label {
+            font-weight: 600;
+            color: #444;
+        }
+        .tips-filter select {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        .tips-filter select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        .tips-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+        }
+        .tip-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .tip-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+        .tip-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        .tip-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tip-content-preview {
+            line-height: 1.7;
+            color: #666;
+            margin-bottom: 20px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .tip-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .tip-category {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .tip-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .tip-delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #ff4757;
+            font-size: 14px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        .tip-delete-btn:hover {
+            background: rgba(255,71,87,0.1);
+        }
+        /* 学习资源整合样式 */
+        .resources-container {
+            display: grid;
+            gap: 25px;
+        }
+        .resource-item {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .resource-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        .resource-icon {
+            font-size: 32px;
+            color: #667eea;
+            min-width: 50px;
+            text-align: center;
+        }
+        .resource-info {
+            flex: 1;
+        }
+        .resource-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #444;
+        }
+        .resource-description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .resource-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+        }
+        .resource-link:hover {
+            text-decoration: underline;
+            color: #764ba2;
+        }
+        .add-resource-form {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        /* 登录模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            position: relative;
+            animation: modalAppear 0.4s ease;
+        }
+        @keyframes modalAppear {
+            from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        .modal-header h2 {
+            color: #667eea;
+            font-size: 24px;
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #aaa;
+            transition: all 0.3s ease;
+            position: absolute;
+            right: 0;
+            top: -5px;
+        }
+        .close-modal:hover {
+            color: #667eea;
+            transform: rotate(90deg);
+        }
+        .auth-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .auth-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+        }
+        .auth-form {
+            display: none;
+        }
+        .auth-form.active {
+            display: block;
+        }
+        .auth-input {
+            width: 100%;
+            padding: 14px 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+        .auth-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        .auth-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .auth-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
+        }
+        .auth-message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1001;
+            transform: translateX(200%);
+            transition: transform 0.4s ease;
+        }
+        .notification.show {
+            transform: translateX(0);
+        }
+        .notification.success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+        .notification.error {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .tab-btn {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+
+            .user-info {
+                position: static;
+                justify-content: center;
+                margin-bottom: 20px;
+                width: 100%;
+            }
+
+            .tips-container {
+                grid-template-columns: 1fr;
+            }
+
+            .resource-item {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .modal-content {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            .subtitle {
+                font-size: 1.1rem;
+            }
+
+            .tips-filter {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎓 大学生活助手</h1>
+            <p class="subtitle">让大学生活更精彩！</p>
+            <div class="user-info" id="userInfo">
+                <!-- 用户信息将在这里显示 -->
+            </div>
+        </header>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="forum">
+                <i>💬</i> 论坛交流
+            </button>
+            <button class="tab-btn" data-tab="tips">
+                <i>💡</i> 生活妙招
+            </button>
+            <button class="tab-btn" data-tab="resources">
+                <i>📚</i> 学习资源
+            </button>
+        </div>
+        <!-- 论坛模块 -->
+        <div id="forum" class="content-section active">
+            <div class="forum-container">
+                <div class="post-form">
+                    <h3>发布新帖子</h3>
+                    <textarea id="postContent" placeholder="分享你的想法或问题..."></textarea>
+                    <button onclick="submitPost()">发布帖子</button>
+                </div>
+
+                <div id="postsList">
+                    <!-- 动态加载帖子 -->
+                </div>
+            </div>
+        </div>
+        <!-- 论坛帖子详情模块 -->
+        <div id="postDetail" class="content-section">
+            <div class="detail-section" id="forumPostDetailContent">
+                <!-- 帖子详情内容将动态加载 -->
+            </div>
+            <div class="comments-section" id="forumCommentsSection">
+                <!-- 评论区域 -->
+            </div>
+        </div>
+        <!-- 生活小妙招模块（列表） -->
+        <div id="tips" class="content-section">
+            <div class="tips-add-form">
+                <h3>添加生活妙招</h3>
+                <div class="form-group">
+                    <label for="tipTitle">妙招标题:</label>
+                    <input type="text" id="tipTitle" placeholder="输入妙招标题">
+                </div>
+                <div class="form-group">
+                    <label for="tipContent">妙招内容:</label>
+                    <textarea id="tipContent" placeholder="输入妙招详细内容"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="tipCategory">分类:</label>
+                    <input type="text" id="tipCategory" placeholder="如：学习方法、健康生活、校园生活等">
+                </div>
+                <button onclick="addTip()">添加妙招</button>
+            </div>
+
+            <div class="tips-filter">
+                <label for="categoryFilter">筛选分类:</label>
+                <select id="categoryFilter" onchange="filterTips()">
+                    <option value="all">全部分类</option>
+                    <!-- 动态加载分类选项 -->
+                </select>
+            </div>
+
+            <div class="tips-container" id="tipsContainer">
+                <!-- 动态加载小妙招 -->
+            </div>
+        </div>
+        <!-- 生活妙招详情模块 -->
+        <div id="tipDetail" class="content-section">
+            <div class="detail-section" id="tipDetailContent">
+                <!-- 妙招详情内容将动态加载 -->
+            </div>
+            <div class="comments-section" id="tipCommentsSection">
+                <!-- 妙招评论区域 -->
+            </div>
+        </div>
+        <!-- 学习资源整合模块 -->
+        <div id="resources" class="content-section">
+            <div class="add-resource-form">
+                <h3>添加学习资源</h3>
+                <div class="form-group">
+                    <label for="resourceName">资源名称:</label>
+                    <input type="text" id="resourceName" placeholder="输入资源名称">
+                </div>
+                <div class="form-group">
+                    <label for="resourceDescription">资源描述:</label>
+                    <textarea id="resourceDescription" placeholder="输入资源描述"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="resourceLink">资源链接:</label>
+                    <input type="url" id="resourceLink" placeholder="https://example.com">
+                </div>
+                <div class="form-group">
+                    <label for="resourceCategory">分类:</label>
+                    <input type="text" id="resourceCategory" placeholder="如：编程、数学、英语等">
+                </div>
+                <button onclick="addResource()">添加资源</button>
+            </div>
+
+            <div class="resources-container" id="resourcesContainer">
+                <!-- 动态加载资源 -->
+            </div>
+        </div>
+    </div>
+    <!-- 登录模态框 -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>用户登录</h2>
+                <button class="close-modal" onclick="closeAuthModal()">&times;</button>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="switchAuthTab('login')">登录</button>
+                <button class="auth-tab" onclick="switchAuthTab('register')">注册</button>
+            </div>
+            <div id="loginForm" class="auth-form active">
+                <input type="text" id="loginUsername" class="auth-input" placeholder="用户名">
+                <input type="password" id="loginPassword" class="auth-input" placeholder="密码">
+                <button class="auth-submit" onclick="loginUser()">登录</button>
+                <div id="loginMessage" class="auth-message"></div>
+            </div>
+            <div id="registerForm" class="auth-form">
+                <input type="text" id="registerUsername" class="auth-input" placeholder="用户名">
+                <input type="password" id="registerPassword" class="auth-input" placeholder="密码">
+                <input type="password" id="confirmPassword" class="auth-input" placeholder="确认密码">
+                <button class="auth-submit" onclick="registerUser()">注册</button>
+                <div id="registerMessage" class="auth-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // -------------------------- GIST 配置（请替换为你的信息） --------------------------
+        const GITHUB_TOKEN = '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'; // 需开启gist权限
+        const GIST_IDS = {
+            users: 'ab5500b945df60aa28d096bdd1a92ec9',        // 存储用户数据的Gist ID
+            posts: 'eaa6ddac14c387164a73dc1e1f8fcec3',        // 存储论坛帖子的Gist ID
+            tips: 'e82bcf2938aecfac6931ef2a73187cc4',         // 存储生活妙招的Gist ID
+            resources: 'a0b2f46e61c1e2cc78318fb3def41b03' // 存储学习资源的Gist ID
+        };
+        const GIST_FILENAMES = {
+            users: 'users.json',
+            posts: 'posts.json',
+            tips: 'tips.json',
+            resources: 'resources.json',
+        };
+
+        // 全局变量
+        let currentUser = null; // 当前登录用户
+        let posts = [];
+        let tips = [];
+        let resources = [];
+        let currentForumPostId = null; // 论坛帖子ID
+        let currentTipId = null; // 妙招ID
+
+        // -------------------------- GIST 核心操作函数 --------------------------
+        // 获取Gist内容
+        async function getGistContent(gistType) {
+            try {
+                const response = await fetch(`https://api.github.com/gists/${GIST_IDS[gistType]}`, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('获取Gist失败');
+                const gist = await response.json();
+                const fileContent = gist.files[GIST_FILENAMES[gistType]]?.content;
+                
+                return fileContent ? JSON.parse(fileContent) : [];
+            } catch (error) {
+                console.error(`获取${gistType} Gist失败:`, error);
+                return [];
+            }
+        }
+
+        // 更新Gist内容
+        async function updateGistContent(gistType, newContent) {
+            try {
+                const response = await fetch(`https://api.github.com/gists/${GIST_IDS[gistType]}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        files: {
+                            [GIST_FILENAMES[gistType]]: {
+                                content: JSON.stringify(newContent, null, 2)
+                            }
+                        }
+                    })
+                });
+
+                if (!response.ok) throw new Error('更新Gist失败');
+                return { success: true };
+            } catch (error) {
+                console.error(`更新${gistType} Gist失败:`, error);
+                return { success: false, message: error.message };
+            }
+        }
+
+        // 初始化Gist（如果为空）
+        async function initGistIfEmpty(gistType, defaultContent = []) {
+            const content = await getGistContent(gistType);
+            if (content.length === 0) {
+                await updateGistContent(gistType, defaultContent);
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 初始化Gist（确保有默认空数组）
+            await initGistIfEmpty('users');
+            await initGistIfEmpty('posts');
+            await initGistIfEmpty('tips');
+            await initGistIfEmpty('resources');
+
+            // 初始化显示内容
+            await renderPosts();
+            await renderTips();
+            await renderResources();
+            await renderCategoryFilter();
+            updateUserInfo();
+
+            // 绑定标签切换事件
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.content-section').forEach(section => {
+                        section.classList.remove('active');
+                    });
+
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+
+            // 绑定ESC键关闭模态框
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeAuthModal();
+                }
+            });
+        });
+
+        // -------------------------- 用户系统相关函数 --------------------------
+        function switchAuthTab(tab) {
+            if (tab === 'login') {
+                document.getElementById('loginForm').classList.add('active');
+                document.getElementById('registerForm').classList.remove('active');
+                document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
+                document.querySelector('.auth-tab:nth-child(2)').classList.remove('active');
+            } else {
+                document.getElementById('registerForm').classList.add('active');
+                document.getElementById('loginForm').classList.remove('active');
+                document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
+                document.querySelector('.auth-tab:nth-child(1)').classList.remove('active');
+            }
+        }
+
+        function openAuthModal() {
+            document.getElementById('authModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+            clearAuthMessages();
+        }
+
+        function clearAuthMessages() {
+            document.getElementById('loginMessage').className = 'auth-message';
+            document.getElementById('loginMessage').textContent = '';
+            document.getElementById('registerMessage').className = 'auth-message';
+            document.getElementById('registerMessage').textContent = '';
+        }
+
+        // 登录（GIST版）
+        async function loginUser() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            if (!username || !password) {
+                showMessage('loginMessage', '请输入用户名和密码', 'error');
+                return;
+            }
+
+            // 从Gist获取用户数据
+            const users = await getGistContent('users');
+            const user = users.find(u => u.username === username && u.password === password);
+
+            if (user) {
+                currentUser = { username: user.username };
+                updateUserInfo();
+                closeAuthModal();
+                showNotification('登录成功！欢迎回来 ' + currentUser.username, 'success');
+            } else {
+                showMessage('loginMessage', '用户名或密码错误', 'error');
+            }
+        }
+
+        // 注册（GIST版）
+        async function registerUser() {
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value.trim();
+            const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+            if (!username || !password || !confirmPassword) {
+                showMessage('registerMessage', '请填写所有字段', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage('registerMessage', '两次输入的密码不一致', 'error');
+                return;
+            }
+
+            // 从Gist获取用户数据
+            const users = await getGistContent('users');
+            if (users.find(u => u.username === username)) {
+                showMessage('registerMessage', '用户名已存在', 'error');
+                return;
+            }
+
+            // 添加新用户并更新Gist
+            users.push({ username, password });
+            const result = await updateGistContent('users', users);
+
+            if (result.success) {
+                currentUser = { username };
+                updateUserInfo();
+                closeAuthModal();
+                showNotification('注册成功！欢迎加入我们 ' + currentUser.username, 'success');
+            } else {
+                showMessage('registerMessage', '注册失败，请重试', 'error');
+            }
+        }
+
+        function logoutUser() {
+            currentUser = null;
+            updateUserInfo();
+            showNotification('已退出登录', 'success');
+        }
+
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.className = `auth-message ${type}`;
+            element.textContent = message;
+
+            setTimeout(() => {
+                element.className = 'auth-message';
+                element.textContent = '';
+            }, 3000);
+        }
+
+        function updateUserInfo() {
+            const userInfoDiv = document.getElementById('userInfo');
+
+            if (currentUser) {
+                userInfoDiv.innerHTML = `
+                    <span class="username-display">👤 ${currentUser.username}</span>
+                    <button class="logout-btn" onclick="logoutUser()">退出登录</button>
+                `;
+            } else {
+                userInfoDiv.innerHTML = `
+                    <button class="login-btn" onclick="openAuthModal()">登录/注册</button>
+                `;
+            }
+        }
+
+        // 显示通知
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // -------------------------- 论坛相关函数（GIST版） --------------------------
+        // 发布帖子
+        async function submitPost() {
+            if (!currentUser) {
+                showNotification('请先登录后再发布帖子！', 'error');
+                openAuthModal();
+                return;
+            }
+            const content = document.getElementById('postContent').value.trim();
+            if (!content) {
+                showNotification('请输入帖子内容！', 'error');
+                return;
+            }
+            
+            // 构造新帖子
+            const newPost = {
+                id: Date.now(),
+                author: currentUser.username,
+                content: content,
+                time: new Date().toLocaleString('zh-CN'),
+                likes: 0,
+                likedBy: [],
+                comments: 0,
+                commentList: []
+            };
+
+            // 获取现有帖子并添加新帖子
+            const posts = await getGistContent('posts');
+            posts.unshift(newPost); // 新帖子放前面
+            const result = await updateGistContent('posts', posts);
+
+            if (result.success) {
+                await renderPosts();
+                document.getElementById('postContent').value = '';
+                showNotification('帖子发布成功！', 'success');
+            } else {
+                showNotification('发布失败，请重试', 'error');
+            }
+        }
+
+        // 点赞帖子
+        async function likePost(postId) {
+            if (!currentUser) {
+                showNotification('请先登录后再点赞！', 'error');
+                openAuthModal();
+                return;
+            }
+
+            // 获取现有帖子
+            const posts = await getGistContent('posts');
+            const postIndex = posts.findIndex(p => p.id === postId);
+            
+            if (postIndex === -1) {
+                showNotification('帖子不存在', 'error');
+                return;
+            }
+
+            const post = posts[postIndex];
+            const isLiked = post.likedBy.includes(currentUser.username);
+
+            // 更新点赞状态
+            if (isLiked) {
+                post.likes -= 1;
+                post.likedBy = post.likedBy.filter(u => u !== currentUser.username);
+            } else {
+                post.likes += 1;
+                post.likedBy.push(currentUser.username);
+            }
+
+            // 更新Gist
+            const result = await updateGistContent('posts', posts);
+            if (result.success) {
+                await renderPosts();
+                showNotification(isLiked ? '取消点赞' : '点赞成功', 'success');
+            } else {
+                showNotification('操作失败，请重试', 'error');
+            }
+        }
+
+        // 删除帖子
+        async function deletePost(postId) {
+            if (!currentUser) {
+                showNotification('请先登录！', 'error');
+                openAuthModal();
+                return;
+            }
+
+            if (confirm('确定要删除这个帖子吗？')) {
+                // 获取现有帖子并过滤掉要删除的帖子
+                const posts = await getGistContent('posts');
+                const filteredPosts = posts.filter(p => p.id !== postId);
+                const result = await updateGistContent('posts', filteredPosts);
+
+                if (result.success) {
+                    await renderPosts();
+                    goBackToForum();
+                    showNotification('帖子删除成功！', 'success');
+                } else {
+                    showNotification('删除失败，请重试', 'error');
+                }
+            }
+        }
+
+        // 渲染帖子列表
+        async function renderPosts() {
+            const postsList = document.getElementById('postsList');
+            postsList.innerHTML = '<p style="text-align:center; color:#777; padding:30px;"><span class="loading"></span>加载中...</p>';
+
+            // 获取帖子数据
+            const postsData = await getGistContent('posts');
+            posts = postsData;
+            postsList.innerHTML = '';
+
+            if (posts.length === 0) {
+                postsList.innerHTML = '<p style="text-align:center; color:#777; padding:30px;">暂无帖子，请发布第一个帖子吧！</p>';
+                return;
+            }
+
+            // 渲染每个帖子
+            posts.forEach(post => {
+                const postElement = document.createElement('div');
+                postElement.className = 'post-item';
+                postElement.setAttribute('data-id', post.id);
+                postElement.innerHTML = `
+                    <div class="post-header">
+                        <span>${post.author}</span>
+                        <span>${post.time}</span>
+                    </div>
+                    <div class="post-content">${post.content}</div>
+                    <div class="post-meta">
+                        <span>评论: ${post.comments}</span>
+                        <span>点赞: ${post.likes}</span>
+                    </div>
+                    <div class="post-actions">
+                        <button class="like-btn ${post.likedBy.includes(currentUser?.username) ? 'liked' : ''}"
+                                onclick="likePost(${post.id})">
+                            ❤️ <span class="like-count">${post.likes}</span>
+                        </button>
+                        ${currentUser && post.author === currentUser.username ?
+                            `<button class="delete-btn" onclick="deletePost(${post.id})">🗑️ 删除</button>` : ''}
+                    </div>
+                `;
+                postElement.addEventListener('click', (e) => {
+                    if (!e.target.closest('.post-actions')) {
+                        showForumPostDetail(post.id);
+                    }
+                });
+                postsList.appendChild(postElement);
+            });
+        }
+
+        // 显示帖子详情
+        async function showForumPostDetail(postId) {
+            currentForumPostId = postId;
+
+            document.getElementById('forum').classList.remove('active');
+            document.getElementById('postDetail').classList.add('active');
+
+            const detailContent = document.getElementById('forumPostDetailContent');
+            detailContent.innerHTML = '<p style="text-align:center; padding:30px;"><span class="loading"></span>加载中...</p>';
+
+            // 获取帖子详情
+            const posts = await getGistContent('posts');
+            const post = posts.find(p => p.id === postId);
+            
+            if (!post) {
+                detailContent.innerHTML = '<p style="text-align:center; color:#ff4757; padding:30px;">帖子不存在</p>';
+                return;
+            }
+
+            // 渲染帖子详情
+            detailContent.innerHTML = `
+                <button class="back-button" onclick="goBackToForum()">← 返回论坛</button>
+                <div class="post-header">
+                    <span>${post.author}</span>
+                    <span>${post.time}</span>
+                </div>
+                <div class="post-content">${post.content}</div>
+                <div class="post-meta">
+                    <span>评论: ${post.comments}</span>
+                    <span>点赞: ${post.likes}</span>
+                </div>
+                <div class="post-actions">
+                    <button class="like-btn ${post.likedBy.includes(currentUser?.username) ? 'liked' : ''}"
+                            onclick="likePost(${post.id})">
+                        ❤️ <span class="like-count">${post.likes}</span>
+                    </button>
+                    ${currentUser && post.author === currentUser.username ?
+                        `<button class="delete-btn" onclick="deletePost(${post.id})">🗑️ 删除</button>` : ''}
+                </div>
+            `;
+
+            // 渲染评论
+            await renderForumComments(postId);
+        }
+
+        function goBackToForum() {
+            document.getElementById('postDetail').classList.remove('active');
+            document.getElementById('forum').classList.add('active');
+        }
+
+        // 渲染论坛评论
+        async function renderForumComments(postId) {
+            const commentsSection = document.getElementById('forumCommentsSection');
+            commentsSection.innerHTML = `
+                <div class="comment-form">
+                    <h4>发表评论</h4>
+                    <textarea id="forumCommentContent-${postId}" placeholder="写下你的评论..."></textarea>
+                    <button onclick="addForumComment(${postId})">发表评论</button>
+                </div>
+                <h4>评论</h4>
+                <p style="text-align:center; padding:20px;"><span class="loading"></span>加载中...</p>
+            `;
+
+            // 获取帖子评论
+            const posts = await getGistContent('posts');
+            const post = posts.find(p => p.id === postId);
+            
+            const commentsContainer = document.createElement('div');
+            commentsContainer.id = 'forumCommentsContainer';
+
+            if (!post || !post.commentList || post.commentList.length === 0) {
+                commentsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">暂无评论</p>';
+            } else {
+                post.commentList.forEach(comment => {
+                    const commentElement = document.createElement('div');
+                    commentElement.className = 'comment-item';
+                    commentElement.innerHTML = `
+                        <div class="comment-header">
+                            <span>${comment.author}</span>
+                            <span>${comment.time}</span>
+                        </div>
+                        <div class="comment-content">${comment.content}</div>
+                    `;
+                    commentsContainer.appendChild(commentElement);
+                });
+            }
+
+            commentsSection.innerHTML = `
+                <div class="comment-form">
+                    <h4>发表评论</h4>
+                    <textarea id="forumCommentContent-${postId}" placeholder="写下你的评论..."></textarea>
+                    <button onclick="addForumComment(${postId})">发表评论</button>
+                </div>
+                <h4>评论 (${post?.commentList?.length || 0})</h4>
+            `;
+            commentsSection.appendChild(commentsContainer);
+        }
+
+        // 添加论坛评论
+        async function addForumComment(postId) {
+            if (!currentUser) {
+                showNotification('请先登录后再评论！', 'error');
+                openAuthModal();
+                return;
+            }
+            const commentInput = document.getElementById(`forumCommentContent-${postId}`);
+            const content = commentInput.value.trim();
+
+            if (!content) {
+                showNotification('请输入评论内容！', 'error');
+                return;
+            }
+
+            // 构造新评论
+            const newComment = {
+                author: currentUser.username,
+                content: content,
+                time: new Date().toLocaleString('zh-CN')
+            };
+
+            // 获取现有帖子并添加评论
+            const posts = await getGistContent('posts');
+            const postIndex = posts.findIndex(p => p.id === postId);
+            
+            if (postIndex === -1) {
+                showNotification('帖子不存在', 'error');
+                return;
+            }
+
+            const post = posts[postIndex];
+            if (!post.commentList) post.commentList = [];
+            
+            // 添加评论并更新评论数
+            post.commentList.push(newComment);
+            post.comments = post.commentList.length;
+
+            // 更新Gist
+            const result = await updateGistContent('posts', posts);
+            if (result.success) {
+                await renderForumComments(postId);
+                await renderPosts();
+                commentInput.value = '';
+                showNotification('评论发表成功！', 'success');
+            } else {
+                showNotification('发表失败，请重试', 'error');
+            }
+        }
+
+        // -------------------------- 生活小妙招相关函数（GIST版） --------------------------
+        // 添加妙招
+        async function addTip() {
+            if (!currentUser) {
+                showNotification('请先登录后再添加妙招！', 'error');
+                openAuthModal();
+                return;
+            }
+            const title = document.getElementById('tipTitle').value.trim();
+            const content = document.getElementById('tipContent').value.trim();
+            const category = document.getElementById('tipCategory').value.trim() || '其他';
+
+            if (!title || !content) {
+                showNotification('请填写标题和内容！', 'error');
+                return;
+            }
+
+            // 构造新妙招
+            const newTip = {
+                id: Date.now(),
+                title: title,
+                content: content,
+                category: category,
+                author: currentUser.username,
+                time: new Date().toLocaleString('zh-CN'),
+                comments: 0,
+                commentList: []
+            };
+
+            // 获取现有妙招并添加新妙招
+            const tips = await getGistContent('tips');
+            tips.unshift(newTip);
+            const result = await updateGistContent('tips', tips);
+
+            if (result.success) {
+                await renderTips();
+                await renderCategoryFilter();
+                document.getElementById('tipTitle').value = '';
+                document.getElementById('tipContent').value = '';
+                document.getElementById('tipCategory').value = '';
+                showNotification('妙招添加成功！', 'success');
+            } else {
+                showNotification('添加失败，请重试', 'error');
+            }
+        }
+
+        // 删除妙招
+        async function deleteTip(tipId) {
+            if (!currentUser) {
+                showNotification('请先登录！', 'error');
+                openAuthModal();
+                return;
+            }
+
+            if (confirm('确定要删除这个妙招吗？')) {
+                // 获取现有妙招并过滤
+                const tips = await getGistContent('tips');
+                const filteredTips = tips.filter(t => t.id !== tipId);
+                const result = await updateGistContent('tips', filteredTips);
+
+                if (result.success) {
+                    await renderTips();
+                    await renderCategoryFilter();
+                    goBackToTips();
+                    showNotification('妙招删除成功！', 'success');
+                } else {
+                    showNotification('删除失败，请重试', 'error');
+                }
+            }
+        }
+
+        // 渲染分类筛选器
+        async function renderCategoryFilter() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            categoryFilter.innerHTML = '<option value="all">全部分类</option>';
+
+            // 获取妙招数据并提取分类
+            const tips = await getGistContent('tips');
+            const categories = [...new Set(tips.map(t => t.category))];
+            
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            });
+        }
+
+        // 筛选妙招
+        async function filterTips() {
+            const selectedCategory = document.getElementById('categoryFilter').value;
+            await renderTips(selectedCategory);
+        }
+
+        // 渲染妙招列表
+        async function renderTips(filterCategory = 'all') {
+            const tipsContainer = document.getElementById('tipsContainer');
+            tipsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:30px;"><span class="loading"></span>加载中...</p>';
+
+            // 获取妙招数据
+            let tipsData = await getGistContent('tips');
+            
+            // 筛选分类
+            if (filterCategory !== 'all') {
+                tipsData = tipsData.filter(t => t.category === filterCategory);
+            }
+
+            tips = tipsData;
+            tipsContainer.innerHTML = '';
+
+            if (tips.length === 0) {
+                tipsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:30px;">暂无妙招，快来添加第一个吧！</p>';
+                return;
+            }
+
+            // 渲染每个妙招
+            tips.forEach(tip => {
+                const tipElement = document.createElement('div');
+                tipElement.className = 'tip-card';
+                tipElement.setAttribute('data-id', tip.id);
+                tipElement.innerHTML = `
+                    <div class="tip-title">💡 ${tip.title}</div>
+                    <div class="tip-content-preview">${tip.content}</div>
+                    <div class="tip-meta">
+                        <span class="tip-category">${tip.category}</span>
+                        <span style="color: #777;">发布者: ${tip.author}</span>
+                    </div>
+                `;
+
+                tipElement.addEventListener('click', () => {
+                    showTipDetail(tip.id);
+                });
+
+                // 添加删除按钮（仅作者可见）
+                if (currentUser && tip.author === currentUser.username) {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'tip-delete-btn';
+                    deleteBtn.innerHTML = '🗑️ 删除';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteTip(tip.id);
+                    };
+                    tipElement.querySelector('.tip-meta').appendChild(deleteBtn);
+                }
+
+                tipsContainer.appendChild(tipElement);
+            });
+        }
+
+        // 显示妙招详情
+        async function showTipDetail(tipId) {
+            currentTipId = tipId;
+
+            document.getElementById('tips').classList.remove('active');
+            document.getElementById('tipDetail').classList.add('active');
+
+            const detailContent = document.getElementById('tipDetailContent');
+            detailContent.innerHTML = '<p style="text-align:center; padding:30px;"><span class="loading"></span>加载中...</p>';
+
+            // 获取妙招详情
+            const tips = await getGistContent('tips');
+            const tip = tips.find(t => t.id === tipId);
+            
+            if (!tip) {
+                detailContent.innerHTML = '<p style="text-align:center; color:#ff4757; padding:30px;">妙招不存在</p>';
+                return;
+            }
+
+            // 渲染妙招详情
+            detailContent.innerHTML = `
+                <button class="back-button" onclick="goBackToTips()">← 返回妙招列表</button>
+                <div class="post-header">
+                    <span>发布者: ${tip.author}</span>
+                    <span>发布时间: ${tip.time}</span>
+                </div>
+                <h2 style="margin: 20px 0; color: #667eea;">💡 ${tip.title}</h2>
+                <div class="post-content" style="font-size: 16px; line-height: 1.8;">${tip.content}</div>
+                <div class="post-meta" style="margin-top: 20px;">
+                    <span class="tip-category">${tip.category}</span>
+                    <span>评论: ${tip.comments}</span>
+                </div>
+                ${currentUser && tip.author === currentUser.username ?
+                    `<button class="delete-btn" style="margin-top: 10px;" onclick="deleteTip(${tip.id})">🗑️ 删除妙招</button>` : ''}
+            `;
+
+            // 渲染评论
+            await renderTipComments(tipId);
+        }
+
+        function goBackToTips() {
+            document.getElementById('tipDetail').classList.remove('active');
+            document.getElementById('tips').classList.add('active');
+            renderTips();
+        }
+
+        // 渲染妙招评论
+        async function renderTipComments(tipId) {
+            const commentsSection = document.getElementById('tipCommentsSection');
+            commentsSection.innerHTML = `
+                <div class="comment-form">
+                    <h4>发表评论</h4>
+                    <textarea id="tipCommentContent-${tipId}" placeholder="写下你的评论..."></textarea>
+                    <button onclick="addTipComment(${tipId})">发表评论</button>
+                </div>
+                <h4>评论</h4>
+                <p style="text-align:center; padding:20px;"><span class="loading"></span>加载中...</p>
+            `;
+
+            // 获取妙招评论
+            const tips = await getGistContent('tips');
+            const tip = tips.find(t => t.id === tipId);
+            
+            const commentsContainer = document.createElement('div');
+            commentsContainer.id = 'tipCommentsContainer';
+
+            if (!tip || !tip.commentList || tip.commentList.length === 0) {
+                commentsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">暂无评论，快来抢沙发！</p>';
+            } else {
+                tip.commentList.forEach(comment => {
+                    const commentElement = document.createElement('div');
+                    commentElement.className = 'comment-item';
+                    commentElement.innerHTML = `
+                        <div class="comment-header">
+                            <span>${comment.author}</span>
+                            <span>${comment.time}</span>
+                        </div>
+                        <div class="comment-content">${comment.content}</div>
+                    `;
+                    commentsContainer.appendChild(commentElement);
+                });
+            }
+
+            commentsSection.innerHTML = `
+                <div class="comment-form">
+                    <h4>发表评论</h4>
+                    <textarea id="tipCommentContent-${tipId}" placeholder="写下你的评论..."></textarea>
+                    <button onclick="addTipComment(${tipId})">发表评论</button>
+                </div>
+                <h4>评论 (${tip?.commentList?.length || 0})</h4>
+            `;
+            commentsSection.appendChild(commentsContainer);
+        }
+
+        // 添加妙招评论
+        async function addTipComment(tipId) {
+            if (!currentUser) {
+                showNotification('请先登录后再评论！', 'error');
+                openAuthModal();
+                return;
+            }
+            const commentInput = document.getElementById(`tipCommentContent-${tipId}`);
+            const content = commentInput.value.trim();
+
+            if (!content) {
+                showNotification('请输入评论内容！', 'error');
+                return;
+            }
+
+            // 构造新评论
+            const newComment = {
+                author: currentUser.username,
+                content: content,
+                time: new Date().toLocaleString('zh-CN')
+            };
+
+            // 获取现有妙招并添加评论
+            const tips = await getGistContent('tips');
+            const tipIndex = tips.findIndex(t => t.id === tipId);
+            
+            if (tipIndex === -1) {
+                showNotification('妙招不存在', 'error');
+                return;
+            }
+
+            const tip = tips[tipIndex];
+            if (!tip.commentList) tip.commentList = [];
+            
+            // 添加评论并更新评论数
+            tip.commentList.push(newComment);
+            tip.comments = tip.commentList.length;
+
+            // 更新Gist
+            const result = await updateGistContent('tips', tips);
+            if (result.success) {
+                await renderTipComments(tipId);
+                await renderTips();
+                commentInput.value = '';
+                showNotification('评论发表成功！', 'success');
+            } else {
+                showNotification('发表失败，请重试', 'error');
+            }
+        }
+
+        // -------------------------- 学习资源相关函数（GIST版） --------------------------
+        // 添加资源
+        async function addResource() {
+            if (!currentUser) {
+                showNotification('请先登录后再添加资源！', 'error');
+                openAuthModal();
+                return;
+            }
+            const name = document.getElementById('resourceName').value.trim();
+            const description = document.getElementById('resourceDescription').value.trim();
+            const link = document.getElementById('resourceLink').value.trim();
+            const category = document.getElementById('resourceCategory').value.trim();
+
+            if (!name || !description || !link) {
+                showNotification('请填写完整信息！', 'error');
+                return;
+            }
+
+            // 构造新资源
+            const newResource = {
+                id: Date.now(),
+                name: name,
+                description: description,
+                link: link,
+                category: category || '其他'
+            };
+
+            // 获取现有资源并添加新资源
+            const resources = await getGistContent('resources');
+            resources.push(newResource);
+            const result = await updateGistContent('resources', resources);
+
+            if (result.success) {
+                await renderResources();
+                document.getElementById('resourceName').value = '';
+                document.getElementById('resourceDescription').value = '';
+                document.getElementById('resourceLink').value = '';
+                document.getElementById('resourceCategory').value = '';
+                showNotification('资源添加成功！', 'success');
+            } else {
+                showNotification('添加失败，请重试', 'error');
+            }
+        }
+
+        // 渲染资源列表
+        async function renderResources() {
+            const resourcesContainer = document.getElementById('resourcesContainer');
+            resourcesContainer.innerHTML = '<p style="text-align:center; color:#777; padding:30px;"><span class="loading"></span>加载中...</p>';
+
+            // 获取资源数据
+            const resourcesData = await getGistContent('resources');
+            resources = resourcesData;
+            resourcesContainer.innerHTML = '';
+
+            if (resources.length === 0) {
+                resourcesContainer.innerHTML = '<p style="text-align:center; color:#777; padding:30px;">暂无资源</p>';
+                return;
+            }
+
+            // 渲染每个资源
+            resources.forEach(resource => {
+                const resourceElement = document.createElement('div');
+                resourceElement.className = 'resource-item';
+                resourceElement.innerHTML = `
+                    <div class="resource-icon">📚</div>
+                    <div class="resource-info">
+                        <div class="resource-name">${resource.name}</div>
+                        <div class="resource-description">${resource.description}</div>
+                        <a href="${resource.link}" target="_blank" class="resource-link">访问资源 →</a>
+                    </div>
+                    <div class="resource-category">${resource.category}</div>
+                `;
+                resourcesContainer.appendChild(resourceElement);
+            });
+        }
+    </script>
+</body>
+</html>
