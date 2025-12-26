@@ -915,6 +915,8 @@ let currentTipId = null; // 妙招ID
 
 // -------------------------- GIST 核心操作函数 --------------------------
 // 获取Gist内容
+// -------------------------- GIST 核心操作函数 --------------------------
+// 获取Gist内容（适配 {"success":true,"data":[]} 格式）
 async function getGistContent(gistType) {
     // 校验参数合法性
     if (!GIST_IDS[gistType] || !GIST_FILENAMES[gistType]) {
@@ -948,32 +950,41 @@ async function getGistContent(gistType) {
             return [];
         }
 
-        // 容错解析JSON
+        // 容错解析JSON + 适配 {"success":true,"data":[]} 格式
         let content;
         try {
             content = JSON.parse(file.content);
+            // 核心：如果是包装格式，提取 data 数组；否则兼容旧数组格式
+            if (typeof content === 'object' && content !== null && 'data' in content) {
+                content = content.data;
+            }
+            // 确保最终返回数组
+            content = Array.isArray(content) ? content : [];
         } catch (parseError) {
             console.error(`解析${gistType} Gist JSON失败:`, parseError);
             return [];
         }
 
-        // 确保返回数组（防止非数组格式）
-        return Array.isArray(content) ? content : [];
+        return content;
     } catch (error) {
         console.error(`获取${gistType} Gist失败:`, error.message);
         return [];
     }
 }
 
-// 更新Gist内容
+// 更新Gist内容（统一包装为 {"success":true,"data":[]} 格式）
 async function updateGistContent(gistType, newContent) {
     // 校验参数合法性
     if (!GIST_IDS[gistType] || !GIST_FILENAMES[gistType]) {
         return { success: false, message: `无效的gistType - ${gistType}` };
     }
 
-    // 确保内容是数组（统一格式）
+    // 确保内容是数组，并统一包装为 {"success":true,"data":数组} 格式
     const finalContent = Array.isArray(newContent) ? newContent : [];
+    const wrappedContent = {
+        success: true,
+        data: finalContent
+    };
 
     try {
         const response = await fetch(`https://api.github.com/gists/${GIST_IDS[gistType]}`, {
@@ -986,7 +997,8 @@ async function updateGistContent(gistType, newContent) {
             body: JSON.stringify({
                 files: {
                     [GIST_FILENAMES[gistType]]: {
-                        content: JSON.stringify(finalContent, null, 2)
+                        // 存储包装后的格式
+                        content: JSON.stringify(wrappedContent, null, 2)
                     }
                 }
             }),
@@ -1006,7 +1018,7 @@ async function updateGistContent(gistType, newContent) {
     }
 }
 
-// 初始化Gist（如果为空）
+// 初始化Gist（如果为空，默认初始化包装格式）
 async function initGistIfEmpty(gistType, defaultContent = []) {
     // 确保默认内容是数组
     const finalDefault = Array.isArray(defaultContent) ? defaultContent : [];
