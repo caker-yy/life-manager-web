@@ -28,6 +28,7 @@ module.exports = async function (context, req) {
     if (req.method === 'OPTIONS') {
         context.res.status = 200;
         context.res.body = { success: true };
+        context.done(); // 必须加这一行，结束请求生命周期
         return;
     }
 
