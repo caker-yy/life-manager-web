@@ -928,7 +928,7 @@ async function getGistContent(gistType) {
     }
 
     try {
-        const response = await fetch(`/api/gist-proxy`, {
+        const response = await fetch(`/api/gist123`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ gistType, method: 'GET' }),
@@ -967,7 +967,7 @@ async function updateGistContent(gistType, newContent) {
     }
 
     try {
-        const response = await fetch(`/api/gist-proxy`, {
+        const response = await fetch(`/api/gist123`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
