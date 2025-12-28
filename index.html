@@ -917,6 +917,8 @@ let currentTipId = null; // 妙招ID
 // 获取Gist内容
 // -------------------------- GIST 核心操作函数 --------------------------
 // 获取Gist内容（适配 {"success":true,"data":[]} 格式）
+// -------------------------- GIST 核心操作函数 --------------------------
+// 获取Gist内容（适配 {"success":true,"data":[]} 格式）
 async function getGistContent(gistType) {
     // 校验参数合法性
     if (!GIST_IDS[gistType] || !GIST_FILENAMES[gistType]) {
