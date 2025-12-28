@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>大学生活助手</title>
+    <title>大学生活助手 - 增强版(用户系统)</title>
     <style>
         * {
             margin: 0;
@@ -173,6 +173,7 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 16px;
+            transition: all 0.3s ease;
         }
         .post-form button:hover {
             transform: translateY(-2px);
@@ -288,6 +289,7 @@
             border-radius: 30px;
             cursor: pointer;
             font-weight: bold;
+            transition: all 0.3s ease;
         }
         .back-button:hover {
             background: #5a6268;
@@ -401,7 +403,7 @@
             border: 1px solid #e9ecef;
             position: relative;
             overflow: hidden;
-            cursor: pointer;
+            cursor: pointer; /* 新增：标识可点击 */
         }
         .tip-card:hover {
             transform: translateY(-8px);
@@ -427,6 +429,7 @@
             gap: 10px;
         }
         .tip-content-preview {
+            /* 新增：预览内容，超出省略 */
             line-height: 1.7;
             color: #666;
             margin-bottom: 20px;
@@ -635,6 +638,7 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 16px;
+            transition: all 0.3s ease;
         }
         .auth-submit:hover {
             transform: translateY(-3px);
@@ -793,6 +797,7 @@
         </div>
         <!-- 生活小妙招模块（列表） -->
         <div id="tips" class="content-section">
+            <!-- 新增：添加生活妙招的表单 -->
             <div class="tips-add-form">
                 <h3>添加生活妙招</h3>
                 <div class="form-group">
@@ -810,6 +815,7 @@
                 <button onclick="addTip()">添加妙招</button>
             </div>
 
+            <!-- 新增：分类筛选 -->
             <div class="tips-filter">
                 <label for="categoryFilter">筛选分类:</label>
                 <select id="categoryFilter" onchange="filterTips()">
@@ -822,7 +828,7 @@
                 <!-- 动态加载小妙招 -->
             </div>
         </div>
-        <!-- 生活妙招详情模块 -->
+        <!-- 生活妙招详情模块（新增） -->
         <div id="tipDetail" class="content-section">
             <div class="detail-section" id="tipDetailContent">
                 <!-- 妙招详情内容将动态加载 -->
@@ -890,140 +896,129 @@
     <div id="notification" class="notification"></div>
 
     <script>
-        // -------------------------- GIST 配置（请替换为你的信息） --------------------------
-const GITHUB_TOKEN = window.env?.GITHUB_TOKEN || ''; // 读取 Azure 环境变量
-const GIST_IDS = {
-    users: 'ab5500b945df60aa28d096bdd1a92ec9',        // 存储用户数据的Gist ID
-    posts: 'eaa6ddac14c387164a73dc1e1f8fcec3',        // 存储论坛帖子的Gist ID
-    tips: 'e82bcf2938aecfac6931ef2a73187cc4',         // 存储生活妙招的Gist ID
-    resources: 'a0b2f46e61c1e2cc78318fb3def41b03' // 存储学习资源的Gist ID
-};
-const GIST_FILENAMES = {
-    users: 'life-manager-users.json',
-    posts: 'life-manager-posts.json',
-    tips: 'life-manager-tips.json',
-    resources: 'life-manager-resources.json',
-};
-
-// 全局变量
-let currentUser = null; // 当前登录用户
-let posts = [];
-let tips = [];
-let resources = [];
-let currentForumPostId = null; // 论坛帖子ID
-let currentTipId = null; // 妙招ID
-
-// -------------------------- 替换后的 GIST 核心函数（调用 Azure 代理） --------------------------
-// 获取Gist内容（通过 Azure API 代理）
-async function getGistContent(gistType) {
-    if (!['users', 'posts', 'tips', 'resources'].includes(gistType)) {
-        console.error(`获取Gist失败: 无效的gistType - ${gistType}`);
-        return [];
-    }
-
-    try {
-        const response = await fetch(`/api/gist123`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ gistType, method: 'GET' }),
-            timeout: 10000
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            throw new Error(`获取Gist失败 [${response.status}]: ${errorData.message || '未知错误'}`);
-        }
-
-        const gist = await response.json();
-        const file = gist.files[GIST_FILENAMES[gistType]];
-        
-        if (!file || !file.content) {
-            console.warn(`Gist ${gistType} 内容为空，初始化空数组`);
-            return [];
-        }
-
-        // 解析统一格式 {"success":true,"data":[]}
-        let content = JSON.parse(file.content);
-        if (content.success && Array.isArray(content.data)) {
-            content = content.data;
-        }
-        return Array.isArray(content) ? content : [];
-    } catch (error) {
-        console.error(`获取${gistType} Gist失败:`, error.message);
-        return [];
-    }
-}
-
-// 更新Gist内容（通过 Azure API 代理）
-async function updateGistContent(gistType, newContent) {
-    if (!['users', 'posts', 'tips', 'resources'].includes(gistType)) {
-        return { success: false, message: `无效的gistType - ${gistType}` };
-    }
-
-    try {
-        const response = await fetch(`/api/gist123`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                gistType,
-                method: 'PATCH',
-                content: Array.isArray(newContent) ? newContent : []
-            }),
-            timeout: 10000
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            throw new Error(`更新Gist失败 [${response.status}]: ${errorData.message || '未知错误'}`);
-        }
-
-        return { success: true };
-    } catch (error) {
-        console.error(`更新${gistType} Gist失败:`, error.message);
-        return { success: false, message: error.message };
-    }
-}
-
-// 初始化Gist（如果为空，默认初始化包装格式）
-async function initGistIfEmpty(gistType, defaultContent = []) {
-    // 确保默认内容是数组
-    const finalDefault = Array.isArray(defaultContent) ? defaultContent : [];
-    const content = await getGistContent(gistType);
-    
-    // 不仅判断长度，还判断是否为有效数组
-    if (!Array.isArray(content) || content.length === 0) {
-        console.log(`初始化${gistType} Gist，使用默认内容`);
-        const result = await updateGistContent(gistType, finalDefault);
-        if (!result.success) {
-            console.error(`初始化${gistType} Gist失败:`, result.message);
-        }
-    }
-}
+        // 全局变量
+        let currentUser = null; // 当前登录用户
+        let posts = [];
+        let tips = [
+            {
+                id: 1,
+                title: "高效学习技巧",
+                content: "使用番茄工作法，25分钟专注学习+5分钟休息，提高学习效率。除此之外，还可以搭配思维导图来梳理知识点，将零散的知识系统化，记忆会更牢固。同时，每天学习结束后花10分钟复盘当天的内容，能有效巩固记忆。",
+                category: "学习方法",
+                author: "admin",
+                time: new Date('2025-01-01').toLocaleString('zh-CN'),
+                comments: [] // 新增：评论数组
+            },
+            {
+                id: 2,
+                title: "时间管理",
+                content: "制定每日计划清单，优先处理重要且紧急的任务。可以使用四象限法则来划分任务：重要且紧急、重要不紧急、紧急不重要、不重要不紧急。把主要精力放在重要不紧急的任务上，能有效减少突发状况。另外，设置任务的截止时间，避免拖延。",
+                category: "时间管理",
+                author: "student1",
+                time: new Date('2025-01-02').toLocaleString('zh-CN'),
+                comments: []
+            },
+            {
+                id: 3,
+                title: "健康饮食",
+                content: "多喝水，每天至少8杯水，保持身体水分平衡。早餐要吃好，包含蛋白质、碳水和维生素；午餐要吃饱，注意荤素搭配；晚餐要吃少，避免油腻和过饱。另外，减少奶茶、油炸食品的摄入，多吃水果和蔬菜。",
+                category: "健康生活",
+                author: "admin",
+                time: new Date('2025-01-03').toLocaleString('zh-CN'),
+                comments: []
+            },
+            {
+                id: 4,
+                title: "考试准备",
+                content: "提前一个月开始复习，制作思维导图帮助记忆。首先梳理考试大纲，明确重点内容；然后分模块复习，每个模块结束后做对应的练习题；最后进行模拟考试，适应考试节奏。另外，复习时要注意劳逸结合，避免熬夜复习。",
+                category: "学习方法",
+                author: "student1",
+                time: new Date('2025-01-04').toLocaleString('zh-CN'),
+                comments: []
+            },
+            {
+                id: 5,
+                title: "社交技巧",
+                content: "主动参与社团活动，与同学建立良好关系。交流时要学会倾听，不要随意打断别人；多赞美他人，发现对方的优点；遇到分歧时，保持冷静，理性沟通。另外，可以记住同学的名字和兴趣爱好，能快速拉近距离。",
+                category: "校园生活",
+                author: "admin",
+                time: new Date('2025-01-05').toLocaleString('zh-CN'),
+                comments: []
+            },
+            {
+                id: 6,
+                title: "理财规划",
+                content: "制定月度预算，记录支出，培养理财意识。首先区分必要支出（如伙食费、交通费）和非必要支出（如零食、游戏充值）；然后设置每月的储蓄目标，强制储蓄；另外，可以尝试做一些兼职，增加收入来源，但要注意不要影响学习。",
+                category: "生活技能",
+                author: "student1",
+                time: new Date('2025-01-06').toLocaleString('zh-CN'),
+                comments: []
+            }
+        ];
+        let resources = [
+            {
+                name: "Coursera在线课程",
+                description: "提供各种免费的在线课程，涵盖计算机科学、商业等多个领域。",
+                link: "https://www.coursera.org",
+                category: "在线教育"
+            },
+            {
+                name: "MIT OpenCourseWare",
+                description: "麻省理工学院开放课程，提供大量免费的高质量教学材料。",
+                link: "https://ocw.mit.edu",
+                category: "学术资源"
+            },
+            {
+                name: "GitHub学习资源",
+                description: "开源代码平台，可以学习各种编程项目和技术文档。",
+                link: "https://github.com",
+                category: "编程学习"
+            },
+            {
+                name: "Khan Academy",
+                description: "提供免费的数学、科学、编程等教育资源。",
+                link: "https://www.khanacademy.org",
+                category: "在线教育"
+            },
+            {
+                name: "Wikipedia",
+                description: "全球最大的免费百科全书，可查阅各类知识。",
+                link: "https://www.wikipedia.org",
+                category: "学术资源"
+            }
+        ];
+        // 当前选中的ID
+        let currentForumPostId = null; // 论坛帖子ID
+        let currentTipId = null; // 妙招ID
+        // 用户数据存储
+        let users = JSON.parse(localStorage.getItem('universityForumUsers')) || [
+            { username: "admin", password: "admin123" },
+            { username: "student1", password: "pass123" }
+        ];
 
         // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', async function() {
-            // 初始化Gist（确保有默认空数组）
-            await initGistIfEmpty('users');
-            await initGistIfEmpty('posts');
-            await initGistIfEmpty('tips');
-            await initGistIfEmpty('resources');
+        document.addEventListener('DOMContentLoaded', function() {
+            // 从本地存储加载数据
+            loadFromLocalStorage();
 
             // 初始化显示内容
-            await renderPosts();
-            await renderTips();
-            await renderResources();
-            await renderCategoryFilter();
+            renderPosts();
+            renderTips();
+            renderResources();
+            renderCategoryFilter(); // 初始化分类筛选器
             updateUserInfo();
 
             // 绑定标签切换事件
             const tabButtons = document.querySelectorAll('.tab-btn');
             tabButtons.forEach(button => {
                 button.addEventListener('click', function() {
+                    // 移除所有活动状态
                     tabButtons.forEach(btn => btn.classList.remove('active'));
                     document.querySelectorAll('.content-section').forEach(section => {
                         section.classList.remove('active');
                     });
 
+                    // 添加当前活动状态
                     this.classList.add('active');
                     const tabId = this.getAttribute('data-tab');
                     document.getElementById(tabId).classList.add('active');
@@ -1038,7 +1033,71 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             });
         });
 
-        // -------------------------- 用户系统相关函数 --------------------------
+        // 本地存储相关函数
+        function saveToLocalStorage() {
+            localStorage.setItem('universityForumPosts', JSON.stringify(posts));
+            localStorage.setItem('universityForumTips', JSON.stringify(tips));
+            localStorage.setItem('universityForumResources', JSON.stringify(resources));
+            localStorage.setItem('universityForumUsers', JSON.stringify(users));
+        }
+
+        function loadFromLocalStorage() {
+            const savedPosts = localStorage.getItem('universityForumPosts');
+            const savedTips = localStorage.getItem('universityForumTips');
+            const savedResources = localStorage.getItem('universityForumResources');
+            const savedUsers = localStorage.getItem('universityForumUsers');
+
+            if (savedPosts) {
+                try {
+                    posts = JSON.parse(savedPosts);
+                } catch (e) {
+                    console.error('加载帖子数据失败:', e);
+                    posts = [];
+                }
+            }
+
+            if (savedTips) {
+                try {
+                    tips = JSON.parse(savedTips);
+                } catch (e) {
+                    console.error('加载小妙招数据失败:', e);
+                    tips = [
+                        {
+                            id: 1,
+                            title: "高效学习技巧",
+                            content: "使用番茄工作法，25分钟专注学习+5分钟休息，提高学习效率。",
+                            category: "学习方法",
+                            author: "admin",
+                            time: new Date('2025-01-01').toLocaleString('zh-CN'),
+                            comments: []
+                        }
+                    ];
+                }
+            }
+
+            if (savedResources) {
+                try {
+                    resources = JSON.parse(savedResources);
+                } catch (e) {
+                    console.error('加载资源数据失败:', e);
+                    resources = [];
+                }
+            }
+
+            if (savedUsers) {
+                try {
+                    users = JSON.parse(savedUsers);
+                } catch (e) {
+                    console.error('加载用户数据失败:', e);
+                    users = [
+                        { username: "admin", password: "admin123" },
+                        { username: "student1", password: "pass123" }
+                    ];
+                }
+            }
+        }
+
+        // 用户系统相关函数
         function switchAuthTab(tab) {
             if (tab === 'login') {
                 document.getElementById('loginForm').classList.add('active');
@@ -1055,12 +1114,12 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
 
         function openAuthModal() {
             document.getElementById('authModal').style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
         }
 
         function closeAuthModal() {
             document.getElementById('authModal').style.display = 'none';
-            document.body.style.overflow = 'auto';
+            document.body.style.overflow = 'auto'; // 恢复背景滚动
             clearAuthMessages();
         }
 
@@ -1071,8 +1130,7 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             document.getElementById('registerMessage').textContent = '';
         }
 
-        // 登录（GIST版）
-        async function loginUser() {
+        function loginUser() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
 
@@ -1081,12 +1139,12 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 return;
             }
 
-            // 从Gist获取用户数据
-            const users = await getGistContent('users');
+            // 查找用户
             const user = users.find(u => u.username === username && u.password === password);
 
             if (user) {
-                currentUser = { username: user.username };
+                currentUser = user;
+                saveToLocalStorage();
                 updateUserInfo();
                 closeAuthModal();
                 showNotification('登录成功！欢迎回来 ' + currentUser.username, 'success');
@@ -1095,8 +1153,7 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             }
         }
 
-        // 注册（GIST版）
-        async function registerUser() {
+        function registerUser() {
             const username = document.getElementById('registerUsername').value.trim();
             const password = document.getElementById('registerPassword').value.trim();
             const confirmPassword = document.getElementById('confirmPassword').value.trim();
@@ -1111,30 +1168,25 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 return;
             }
 
-            // 从Gist获取用户数据
-            const users = await getGistContent('users');
-            if (users.find(u => u.username === username)) {
+            // 检查用户名是否已存在
+            if (users.some(u => u.username === username)) {
                 showMessage('registerMessage', '用户名已存在', 'error');
                 return;
             }
 
-            // 添加新用户并更新Gist
-            users.push({ username, password });
-            const result = await updateGistContent('users', users);
-
-            if (result.success) {
-                currentUser = { username };
-                updateUserInfo();
-                closeAuthModal();
-                showNotification('注册成功！欢迎加入我们 ' + currentUser.username, 'success');
-            } else {
-                showMessage('registerMessage', '注册失败，请重试', 'error');
-            }
+            // 注册新用户
+            users.push({ username: username, password: password });
+            currentUser = { username: username, password: password };
+            saveToLocalStorage();
+            updateUserInfo();
+            closeAuthModal();
+            showNotification('注册成功！欢迎加入我们 ' + currentUser.username, 'success');
         }
 
         function logoutUser() {
             currentUser = null;
             updateUserInfo();
+            saveToLocalStorage();
             showNotification('已退出登录', 'success');
         }
 
@@ -1143,6 +1195,7 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             element.className = `auth-message ${type}`;
             element.textContent = message;
 
+            // 3秒后自动清除消息
             setTimeout(() => {
                 element.className = 'auth-message';
                 element.textContent = '';
@@ -1175,9 +1228,8 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             }, 3000);
         }
 
-        // -------------------------- 论坛相关函数（GIST版） --------------------------
-        // 发布帖子
-        async function submitPost() {
+        // 论坛相关函数
+        function submitPost() {
             if (!currentUser) {
                 showNotification('请先登录后再发布帖子！', 'error');
                 openAuthModal();
@@ -1188,104 +1240,75 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 showNotification('请输入帖子内容！', 'error');
                 return;
             }
-            
-            // 构造新帖子
             const newPost = {
-                id: Date.now(),
+                id: Date.now(), // 使用时间戳作为唯一ID
                 author: currentUser.username,
                 content: content,
                 time: new Date().toLocaleString('zh-CN'),
                 likes: 0,
-                likedBy: [],
-                comments: 0,
-                commentList: []
+                likedBy: [], // 记录点赞的用户
+                comments: []
             };
-
-            // 获取现有帖子并添加新帖子
-            const posts = await getGistContent('posts');
-            posts.unshift(newPost); // 新帖子放前面
-            const result = await updateGistContent('posts', posts);
-
-            if (result.success) {
-                await renderPosts();
-                document.getElementById('postContent').value = '';
-                showNotification('帖子发布成功！', 'success');
-            } else {
-                showNotification('发布失败，请重试', 'error');
-            }
+            posts.unshift(newPost);
+            saveToLocalStorage(); // 保存到本地存储
+            renderPosts();
+            document.getElementById('postContent').value = '';
+            showNotification('帖子发布成功！', 'success');
         }
 
-        // 点赞帖子
-        async function likePost(postId) {
+        function likePost(postId) {
             if (!currentUser) {
                 showNotification('请先登录后再点赞！', 'error');
                 openAuthModal();
                 return;
             }
-
-            // 获取现有帖子
-            const posts = await getGistContent('posts');
             const postIndex = posts.findIndex(p => p.id === postId);
-            
-            if (postIndex === -1) {
-                showNotification('帖子不存在', 'error');
-                return;
-            }
-
+            if (postIndex === -1) return;
             const post = posts[postIndex];
-            const isLiked = post.likedBy.includes(currentUser.username);
+            const userId = currentUser.username; // 使用用户名作为用户标识
 
-            // 更新点赞状态
-            if (isLiked) {
-                post.likes -= 1;
-                post.likedBy = post.likedBy.filter(u => u !== currentUser.username);
+            // 检查是否已经点赞
+            const userLiked = post.likedBy.includes(userId);
+
+            if (userLiked) {
+                // 取消点赞
+                post.likes--;
+                post.likedBy = post.likedBy.filter(id => id !== userId);
             } else {
-                post.likes += 1;
-                post.likedBy.push(currentUser.username);
+                // 点赞
+                post.likes++;
+                post.likedBy.push(userId);
             }
 
-            // 更新Gist
-            const result = await updateGistContent('posts', posts);
-            if (result.success) {
-                await renderPosts();
-                showNotification(isLiked ? '取消点赞' : '点赞成功', 'success');
-            } else {
-                showNotification('操作失败，请重试', 'error');
-            }
+            saveToLocalStorage(); // 保存到本地存储
+            renderPosts(); // 重新渲染帖子列表
+            showNotification(userLiked ? '取消点赞' : '点赞成功', 'success');
         }
 
-        // 删除帖子
-        async function deletePost(postId) {
+        function deletePost(postId) {
             if (!currentUser) {
                 showNotification('请先登录！', 'error');
                 openAuthModal();
                 return;
             }
-
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex === -1) return;
+            // 检查是否是该用户的帖子
+            const post = posts[postIndex];
+            if (post.author !== currentUser.username) {
+                showNotification('您只能删除自己发布的帖子！', 'error');
+                return;
+            }
             if (confirm('确定要删除这个帖子吗？')) {
-                // 获取现有帖子并过滤掉要删除的帖子
-                const posts = await getGistContent('posts');
-                const filteredPosts = posts.filter(p => p.id !== postId);
-                const result = await updateGistContent('posts', filteredPosts);
-
-                if (result.success) {
-                    await renderPosts();
-                    goBackToForum();
-                    showNotification('帖子删除成功！', 'success');
-                } else {
-                    showNotification('删除失败，请重试', 'error');
-                }
+                posts.splice(postIndex, 1);
+                saveToLocalStorage(); // 保存到本地存储
+                renderPosts();
+                showNotification('帖子删除成功！', 'success');
             }
         }
 
-        // 渲染帖子列表
-        async function renderPosts() {
+        function renderPosts() {
             const postsList = document.getElementById('postsList');
-            postsList.innerHTML = '<p style="text-align:center; color:#777; padding:30px;"><span class="loading"></span>加载中...</p>';
-
-            // 获取帖子数据
-            const postsData = await getGistContent('posts');
-            posts = postsData;
             postsList.innerHTML = '';
 
             if (posts.length === 0) {
@@ -1293,7 +1316,6 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 return;
             }
 
-            // 渲染每个帖子
             posts.forEach(post => {
                 const postElement = document.createElement('div');
                 postElement.className = 'post-item';
@@ -1305,7 +1327,7 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                     </div>
                     <div class="post-content">${post.content}</div>
                     <div class="post-meta">
-                        <span>评论: ${post.comments}</span>
+                        <span>评论: ${post.comments.length}</span>
                         <span>点赞: ${post.likes}</span>
                     </div>
                     <div class="post-actions">
@@ -1318,6 +1340,7 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                     </div>
                 `;
                 postElement.addEventListener('click', (e) => {
+                    // 阻止按钮点击事件冒泡到帖子卡片
                     if (!e.target.closest('.post-actions')) {
                         showForumPostDetail(post.id);
                     }
@@ -1326,26 +1349,17 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             });
         }
 
-        // 显示帖子详情
-        async function showForumPostDetail(postId) {
+        function showForumPostDetail(postId) {
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
             currentForumPostId = postId;
 
+            // 切换到论坛帖子详情页面
             document.getElementById('forum').classList.remove('active');
             document.getElementById('postDetail').classList.add('active');
 
-            const detailContent = document.getElementById('forumPostDetailContent');
-            detailContent.innerHTML = '<p style="text-align:center; padding:30px;"><span class="loading"></span>加载中...</p>';
-
-            // 获取帖子详情
-            const posts = await getGistContent('posts');
-            const post = posts.find(p => p.id === postId);
-            
-            if (!post) {
-                detailContent.innerHTML = '<p style="text-align:center; color:#ff4757; padding:30px;">帖子不存在</p>';
-                return;
-            }
-
             // 渲染帖子详情
+            const detailContent = document.getElementById('forumPostDetailContent');
             detailContent.innerHTML = `
                 <button class="back-button" onclick="goBackToForum()">← 返回论坛</button>
                 <div class="post-header">
@@ -1354,7 +1368,7 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 </div>
                 <div class="post-content">${post.content}</div>
                 <div class="post-meta">
-                    <span>评论: ${post.comments}</span>
+                    <span>评论: ${post.comments.length}</span>
                     <span>点赞: ${post.likes}</span>
                 </div>
                 <div class="post-actions">
@@ -1366,9 +1380,8 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                         `<button class="delete-btn" onclick="deletePost(${post.id})">🗑️ 删除</button>` : ''}
                 </div>
             `;
-
             // 渲染评论
-            await renderForumComments(postId);
+            renderForumComments(postId);
         }
 
         function goBackToForum() {
@@ -1376,8 +1389,9 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             document.getElementById('forum').classList.add('active');
         }
 
-        // 渲染论坛评论
-        async function renderForumComments(postId) {
+        function renderForumComments(postId) {
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
             const commentsSection = document.getElementById('forumCommentsSection');
             commentsSection.innerHTML = `
                 <div class="comment-form">
@@ -1385,21 +1399,15 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                     <textarea id="forumCommentContent-${postId}" placeholder="写下你的评论..."></textarea>
                     <button onclick="addForumComment(${postId})">发表评论</button>
                 </div>
-                <h4>评论</h4>
-                <p style="text-align:center; padding:20px;"><span class="loading"></span>加载中...</p>
+                <h4>评论 (${post.comments.length})</h4>
             `;
-
-            // 获取帖子评论
-            const posts = await getGistContent('posts');
-            const post = posts.find(p => p.id === postId);
-            
             const commentsContainer = document.createElement('div');
             commentsContainer.id = 'forumCommentsContainer';
 
-            if (!post || !post.commentList || post.commentList.length === 0) {
+            if (post.comments.length === 0) {
                 commentsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">暂无评论</p>';
             } else {
-                post.commentList.forEach(comment => {
+                post.comments.forEach(comment => {
                     const commentElement = document.createElement('div');
                     commentElement.className = 'comment-item';
                     commentElement.innerHTML = `
@@ -1412,20 +1420,10 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                     commentsContainer.appendChild(commentElement);
                 });
             }
-
-            commentsSection.innerHTML = `
-                <div class="comment-form">
-                    <h4>发表评论</h4>
-                    <textarea id="forumCommentContent-${postId}" placeholder="写下你的评论..."></textarea>
-                    <button onclick="addForumComment(${postId})">发表评论</button>
-                </div>
-                <h4>评论 (${post?.commentList?.length || 0})</h4>
-            `;
             commentsSection.appendChild(commentsContainer);
         }
 
-        // 添加论坛评论
-        async function addForumComment(postId) {
+        function addForumComment(postId) {
             if (!currentUser) {
                 showNotification('请先登录后再评论！', 'error');
                 openAuthModal();
@@ -1438,45 +1436,29 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 showNotification('请输入评论内容！', 'error');
                 return;
             }
-
-            // 构造新评论
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
             const newComment = {
+                id: Date.now(),
                 author: currentUser.username,
                 content: content,
                 time: new Date().toLocaleString('zh-CN')
             };
+            post.comments.push(newComment);
+            saveToLocalStorage(); // 保存到本地存储
 
-            // 获取现有帖子并添加评论
-            const posts = await getGistContent('posts');
-            const postIndex = posts.findIndex(p => p.id === postId);
-            
-            if (postIndex === -1) {
-                showNotification('帖子不存在', 'error');
-                return;
-            }
+            // 更新显示
+            renderForumComments(postId);
+            renderPosts(); // 更新帖子列表中的评论数
 
-            const post = posts[postIndex];
-            if (!post.commentList) post.commentList = [];
-            
-            // 添加评论并更新评论数
-            post.commentList.push(newComment);
-            post.comments = post.commentList.length;
-
-            // 更新Gist
-            const result = await updateGistContent('posts', posts);
-            if (result.success) {
-                await renderForumComments(postId);
-                await renderPosts();
-                commentInput.value = '';
-                showNotification('评论发表成功！', 'success');
-            } else {
-                showNotification('发表失败，请重试', 'error');
-            }
+            // 清空输入框
+            commentInput.value = '';
+            showNotification('评论发表成功！', 'success');
         }
 
-        // -------------------------- 生活小妙招相关函数（GIST版） --------------------------
-        // 添加妙招
-        async function addTip() {
+        // 生活小妙招相关函数
+        // 新增：添加生活妙招
+        function addTip() {
             if (!currentUser) {
                 showNotification('请先登录后再添加妙招！', 'error');
                 openAuthModal();
@@ -1491,7 +1473,6 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 return;
             }
 
-            // 构造新妙招
             const newTip = {
                 id: Date.now(),
                 title: title,
@@ -1499,61 +1480,56 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 category: category,
                 author: currentUser.username,
                 time: new Date().toLocaleString('zh-CN'),
-                comments: 0,
-                commentList: []
+                comments: [] // 新增：评论数组
             };
 
-            // 获取现有妙招并添加新妙招
-            const tips = await getGistContent('tips');
             tips.unshift(newTip);
-            const result = await updateGistContent('tips', tips);
+            saveToLocalStorage();
+            renderTips();
+            renderCategoryFilter(); // 更新分类筛选器
 
-            if (result.success) {
-                await renderTips();
-                await renderCategoryFilter();
-                document.getElementById('tipTitle').value = '';
-                document.getElementById('tipContent').value = '';
-                document.getElementById('tipCategory').value = '';
-                showNotification('妙招添加成功！', 'success');
-            } else {
-                showNotification('添加失败，请重试', 'error');
-            }
+            // 清空表单
+            document.getElementById('tipTitle').value = '';
+            document.getElementById('tipContent').value = '';
+            document.getElementById('tipCategory').value = '';
+
+            showNotification('妙招添加成功！', 'success');
         }
 
-        // 删除妙招
-        async function deleteTip(tipId) {
+        // 新增：删除生活妙招
+        function deleteTip(tipId) {
             if (!currentUser) {
                 showNotification('请先登录！', 'error');
                 openAuthModal();
                 return;
             }
 
-            if (confirm('确定要删除这个妙招吗？')) {
-                // 获取现有妙招并过滤
-                const tips = await getGistContent('tips');
-                const filteredTips = tips.filter(t => t.id !== tipId);
-                const result = await updateGistContent('tips', filteredTips);
+            const tipIndex = tips.findIndex(t => t.id === tipId);
+            if (tipIndex === -1) return;
 
-                if (result.success) {
-                    await renderTips();
-                    await renderCategoryFilter();
-                    goBackToTips();
-                    showNotification('妙招删除成功！', 'success');
-                } else {
-                    showNotification('删除失败，请重试', 'error');
-                }
+            const tip = tips[tipIndex];
+            if (tip.author !== currentUser.username) {
+                showNotification('您只能删除自己发布的妙招！', 'error');
+                return;
+            }
+
+            if (confirm('确定要删除这个妙招吗？')) {
+                tips.splice(tipIndex, 1);
+                saveToLocalStorage();
+                renderTips();
+                renderCategoryFilter(); // 更新分类筛选器
+                showNotification('妙招删除成功！', 'success');
             }
         }
 
-        // 渲染分类筛选器
-        async function renderCategoryFilter() {
+        // 新增：渲染分类筛选器
+        function renderCategoryFilter() {
             const categoryFilter = document.getElementById('categoryFilter');
-            categoryFilter.innerHTML = '<option value="all">全部分类</option>';
-
-            // 获取妙招数据并提取分类
-            const tips = await getGistContent('tips');
+            // 获取所有唯一分类
             const categories = [...new Set(tips.map(t => t.category))];
-            
+            // 保留默认选项
+            categoryFilter.innerHTML = '<option value="all">全部分类</option>';
+            // 添加分类选项
             categories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category;
@@ -1562,38 +1538,31 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             });
         }
 
-        // 筛选妙招
-        async function filterTips() {
+        // 新增：筛选生活妙招
+        function filterTips() {
             const selectedCategory = document.getElementById('categoryFilter').value;
-            await renderTips(selectedCategory);
+            let filteredTips = tips;
+            if (selectedCategory !== 'all') {
+                filteredTips = tips.filter(t => t.category === selectedCategory);
+            }
+            renderTips(filteredTips);
         }
 
-        // 渲染妙招列表
-        async function renderTips(filterCategory = 'all') {
+        // 优化：渲染生活妙招（支持筛选后的列表）
+        function renderTips(filteredTips = tips) {
             const tipsContainer = document.getElementById('tipsContainer');
-            tipsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:30px;"><span class="loading"></span>加载中...</p>';
-
-            // 获取妙招数据
-            let tipsData = await getGistContent('tips');
-            
-            // 筛选分类
-            if (filterCategory !== 'all') {
-                tipsData = tipsData.filter(t => t.category === filterCategory);
-            }
-
-            tips = tipsData;
             tipsContainer.innerHTML = '';
 
-            if (tips.length === 0) {
+            if (filteredTips.length === 0) {
                 tipsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:30px;">暂无妙招，快来添加第一个吧！</p>';
                 return;
             }
 
-            // 渲染每个妙招
-            tips.forEach(tip => {
+            filteredTips.forEach(tip => {
                 const tipElement = document.createElement('div');
                 tipElement.className = 'tip-card';
                 tipElement.setAttribute('data-id', tip.id);
+                // 新增：预览内容（截取前几行），完整内容在详情页显示
                 tipElement.innerHTML = `
                     <div class="tip-title">💡 ${tip.title}</div>
                     <div class="tip-content-preview">${tip.content}</div>
@@ -1602,47 +1571,38 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                         <span style="color: #777;">发布者: ${tip.author}</span>
                     </div>
                 `;
-
+                // 新增：点击卡片进入详情页
                 tipElement.addEventListener('click', () => {
                     showTipDetail(tip.id);
                 });
-
-                // 添加删除按钮（仅作者可见）
+                // 新增：删除按钮（阻止事件冒泡，避免触发详情页）
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'tip-delete-btn';
+                deleteBtn.innerHTML = '🗑️ 删除';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation(); // 阻止冒泡
+                    deleteTip(tip.id);
+                };
+                // 只有作者能看到删除按钮
                 if (currentUser && tip.author === currentUser.username) {
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'tip-delete-btn';
-                    deleteBtn.innerHTML = '🗑️ 删除';
-                    deleteBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        deleteTip(tip.id);
-                    };
                     tipElement.querySelector('.tip-meta').appendChild(deleteBtn);
                 }
-
                 tipsContainer.appendChild(tipElement);
             });
         }
 
-        // 显示妙招详情
-        async function showTipDetail(tipId) {
+        // 新增：显示妙招详情
+        function showTipDetail(tipId) {
+            const tip = tips.find(t => t.id === tipId);
+            if (!tip) return;
             currentTipId = tipId;
 
+            // 切换到妙招详情页面
             document.getElementById('tips').classList.remove('active');
             document.getElementById('tipDetail').classList.add('active');
 
-            const detailContent = document.getElementById('tipDetailContent');
-            detailContent.innerHTML = '<p style="text-align:center; padding:30px;"><span class="loading"></span>加载中...</p>';
-
-            // 获取妙招详情
-            const tips = await getGistContent('tips');
-            const tip = tips.find(t => t.id === tipId);
-            
-            if (!tip) {
-                detailContent.innerHTML = '<p style="text-align:center; color:#ff4757; padding:30px;">妙招不存在</p>';
-                return;
-            }
-
             // 渲染妙招详情
+            const detailContent = document.getElementById('tipDetailContent');
             detailContent.innerHTML = `
                 <button class="back-button" onclick="goBackToTips()">← 返回妙招列表</button>
                 <div class="post-header">
@@ -1653,24 +1613,27 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 <div class="post-content" style="font-size: 16px; line-height: 1.8;">${tip.content}</div>
                 <div class="post-meta" style="margin-top: 20px;">
                     <span class="tip-category">${tip.category}</span>
-                    <span>评论: ${tip.comments}</span>
+                    <span>评论: ${tip.comments.length}</span>
                 </div>
                 ${currentUser && tip.author === currentUser.username ?
-                    `<button class="delete-btn" style="margin-top: 10px;" onclick="deleteTip(${tip.id})">🗑️ 删除妙招</button>` : ''}
+                    `<button class="delete-btn" style="margin-top: 10px;" onclick="deleteTip(${tip.id}); goBackToTips()">🗑️ 删除妙招</button>` : ''}
             `;
-
-            // 渲染评论
-            await renderTipComments(tipId);
+            // 渲染妙招评论
+            renderTipComments(tipId);
         }
 
+        // 新增：返回妙招列表
         function goBackToTips() {
             document.getElementById('tipDetail').classList.remove('active');
             document.getElementById('tips').classList.add('active');
+            // 刷新列表（防止删除后数据不一致）
             renderTips();
         }
 
-        // 渲染妙招评论
-        async function renderTipComments(tipId) {
+        // 新增：渲染妙招评论
+        function renderTipComments(tipId) {
+            const tip = tips.find(t => t.id === tipId);
+            if (!tip) return;
             const commentsSection = document.getElementById('tipCommentsSection');
             commentsSection.innerHTML = `
                 <div class="comment-form">
@@ -1678,21 +1641,15 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                     <textarea id="tipCommentContent-${tipId}" placeholder="写下你的评论..."></textarea>
                     <button onclick="addTipComment(${tipId})">发表评论</button>
                 </div>
-                <h4>评论</h4>
-                <p style="text-align:center; padding:20px;"><span class="loading"></span>加载中...</p>
+                <h4>评论 (${tip.comments.length})</h4>
             `;
-
-            // 获取妙招评论
-            const tips = await getGistContent('tips');
-            const tip = tips.find(t => t.id === tipId);
-            
             const commentsContainer = document.createElement('div');
             commentsContainer.id = 'tipCommentsContainer';
 
-            if (!tip || !tip.commentList || tip.commentList.length === 0) {
+            if (tip.comments.length === 0) {
                 commentsContainer.innerHTML = '<p style="text-align:center; color:#777; padding:20px;">暂无评论，快来抢沙发！</p>';
             } else {
-                tip.commentList.forEach(comment => {
+                tip.comments.forEach(comment => {
                     const commentElement = document.createElement('div');
                     commentElement.className = 'comment-item';
                     commentElement.innerHTML = `
@@ -1705,20 +1662,11 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                     commentsContainer.appendChild(commentElement);
                 });
             }
-
-            commentsSection.innerHTML = `
-                <div class="comment-form">
-                    <h4>发表评论</h4>
-                    <textarea id="tipCommentContent-${tipId}" placeholder="写下你的评论..."></textarea>
-                    <button onclick="addTipComment(${tipId})">发表评论</button>
-                </div>
-                <h4>评论 (${tip?.commentList?.length || 0})</h4>
-            `;
             commentsSection.appendChild(commentsContainer);
         }
 
-        // 添加妙招评论
-        async function addTipComment(tipId) {
+        // 新增：添加妙招评论
+        function addTipComment(tipId) {
             if (!currentUser) {
                 showNotification('请先登录后再评论！', 'error');
                 openAuthModal();
@@ -1731,45 +1679,28 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 showNotification('请输入评论内容！', 'error');
                 return;
             }
-
-            // 构造新评论
+            const tip = tips.find(t => t.id === tipId);
+            if (!tip) return;
             const newComment = {
+                id: Date.now(),
                 author: currentUser.username,
                 content: content,
                 time: new Date().toLocaleString('zh-CN')
             };
+            tip.comments.push(newComment);
+            saveToLocalStorage(); // 保存到本地存储
 
-            // 获取现有妙招并添加评论
-            const tips = await getGistContent('tips');
-            const tipIndex = tips.findIndex(t => t.id === tipId);
-            
-            if (tipIndex === -1) {
-                showNotification('妙招不存在', 'error');
-                return;
-            }
+            // 更新显示
+            renderTipComments(tipId);
+            renderTips(); // 更新妙招列表中的评论数
 
-            const tip = tips[tipIndex];
-            if (!tip.commentList) tip.commentList = [];
-            
-            // 添加评论并更新评论数
-            tip.commentList.push(newComment);
-            tip.comments = tip.commentList.length;
-
-            // 更新Gist
-            const result = await updateGistContent('tips', tips);
-            if (result.success) {
-                await renderTipComments(tipId);
-                await renderTips();
-                commentInput.value = '';
-                showNotification('评论发表成功！', 'success');
-            } else {
-                showNotification('发表失败，请重试', 'error');
-            }
+            // 清空输入框
+            commentInput.value = '';
+            showNotification('评论发表成功！', 'success');
         }
 
-        // -------------------------- 学习资源相关函数（GIST版） --------------------------
-        // 添加资源
-        async function addResource() {
+        // 学习资源整合相关函数
+        function addResource() {
             if (!currentUser) {
                 showNotification('请先登录后再添加资源！', 'error');
                 openAuthModal();
@@ -1779,46 +1710,31 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
             const description = document.getElementById('resourceDescription').value.trim();
             const link = document.getElementById('resourceLink').value.trim();
             const category = document.getElementById('resourceCategory').value.trim();
-
             if (!name || !description || !link) {
                 showNotification('请填写完整信息！', 'error');
                 return;
             }
-
-            // 构造新资源
             const newResource = {
-                id: Date.now(),
                 name: name,
                 description: description,
                 link: link,
                 category: category || '其他'
             };
+            resources.unshift(newResource);
+            saveToLocalStorage(); // 保存到本地存储
 
-            // 获取现有资源并添加新资源
-            const resources = await getGistContent('resources');
-            resources.push(newResource);
-            const result = await updateGistContent('resources', resources);
+            // 清空表单
+            document.getElementById('resourceName').value = '';
+            document.getElementById('resourceDescription').value = '';
+            document.getElementById('resourceLink').value = '';
+            document.getElementById('resourceCategory').value = '';
 
-            if (result.success) {
-                await renderResources();
-                document.getElementById('resourceName').value = '';
-                document.getElementById('resourceDescription').value = '';
-                document.getElementById('resourceLink').value = '';
-                document.getElementById('resourceCategory').value = '';
-                showNotification('资源添加成功！', 'success');
-            } else {
-                showNotification('添加失败，请重试', 'error');
-            }
+            renderResources();
+            showNotification('资源添加成功！', 'success');
         }
 
-        // 渲染资源列表
-        async function renderResources() {
+        function renderResources() {
             const resourcesContainer = document.getElementById('resourcesContainer');
-            resourcesContainer.innerHTML = '<p style="text-align:center; color:#777; padding:30px;"><span class="loading"></span>加载中...</p>';
-
-            // 获取资源数据
-            const resourcesData = await getGistContent('resources');
-            resources = resourcesData;
             resourcesContainer.innerHTML = '';
 
             if (resources.length === 0) {
@@ -1826,7 +1742,6 @@ async function initGistIfEmpty(gistType, defaultContent = []) {
                 return;
             }
 
-            // 渲染每个资源
             resources.forEach(resource => {
                 const resourceElement = document.createElement('div');
                 resourceElement.className = 'resource-item';
