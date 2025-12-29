@@ -2702,6 +2702,29 @@
                 postElement.className = 'post-item';
                 postElement.setAttribute('data-id', post.id);
 
+
+
+        function deletePost(postId) {
+            if (!currentUser) {
+                showNotification('请先登录！', 'error');
+                openAuthModal();
+                return;
+            }
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex === -1) return;
+            // 检查是否是该用户的帖子
+            const post = posts[postIndex];
+            if (post.author !== currentUser.username) {
+                showNotification('您只能删除自己发布的帖子！', 'error');
+                return;
+            }
+            if (confirm('确定要删除这个帖子吗？')) {
+                posts.splice(postIndex, 1);
+                saveToLocalStorage(); // 保存到本地存储
+                renderPosts();
+                showNotification('帖子删除成功！', 'success');
+            }
+        }
                 // 解析Markdown内容
                 let contentPreview = '';
                 try {
