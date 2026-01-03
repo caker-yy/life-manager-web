@@ -778,6 +778,12 @@
                 <div class="post-form">
                     <h3>发布新帖子</h3>
                     <textarea id="postContent" placeholder="分享你的想法或问题..."></textarea>
+                    <div class="image-upload" style="margin: 15px 0;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">上传图片 (可选):</label>
+                        <input type="file" id="postImage" accept="image/*" style="padding: 8px; border: 1px solid #ddd; border-radius: 10px; width: 100%;">
+                        <div id="imagePreview" style="margin-top: 10px; max-width: 300px;"></div>
+                    </div>
+                    
                     <button onclick="submitPost()">发布帖子</button>
                 </div>
 
@@ -1229,32 +1235,152 @@
         }
 
         // 论坛相关函数
+
+
+                // 添加图片预览功能
+            document.getElementById('postImage').addEventListener('change', function(e) {
+                const previewContainer = document.getElementById('imagePreview');
+                previewContainer.innerHTML = ''; // 清空之前的预览
+                
+                const file = e.target.files[0];
+                if (file) {
+                    // 检查文件类型是否为图片
+                    if (!file.type.startsWith('image/')) {
+                        showNotification('请上传图片文件', 'error');
+                        this.value = ''; // 清空选择
+                        return;
+                    }
+                    
+                    // 检查文件大小（限制5MB以内）
+                    if (file.size > 5 * 1024 * 1024) {
+                        showNotification('图片大小不能超过5MB', 'error');
+                        this.value = ''; // 清空选择
+                        return;
+                    }
+                    
+                    // 预览图片
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+                        img.style.maxWidth = '100%';
+                        img.style.borderRadius = '10px';
+                        img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                        previewContainer.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+        // 替换原 submitPost 函数
         function submitPost() {
-            if (!currentUser) {
-                showNotification('请先登录后再发布帖子！', 'error');
-                openAuthModal();
+        if (!currentUser) {
+            showNotification('请先登录', 'error');
+            openAuthModal();
+            return;
+        }
+        
+        const content = document.getElementById('postContent').value.trim();
+        const imageInput = document.getElementById('postImage');
+        let imageData = null;
+        
+        if (imageInput.files.length > 0) {
+            const file = imageInput.files[0];
+            if (!file.type.startsWith('image/')) {
+            showNotification('请上传图片文件', 'error');
+            imageInput.value = '';
+            return;
+            }
+            if (file.size > 5*1024*1024) {
+            showNotification('图片大小不能超过5MB', 'error');
+            imageInput.value = '';
+            return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+            imageData = event.target.result;
+            savePost(content, imageData); // 异步完成后保存
+            };
+            reader.readAsDataURL(file);
+        } else {
+            savePost(content, null);
+        }
+        }
+
+        // 在 DOMContentLoaded 中绑定图片预览事件（替换原代码中错误位置的绑定）
+        document.addEventListener('DOMContentLoaded', function() {
+        loadFromLocalStorage();
+        renderPosts();
+        renderTips();
+        renderResources();
+        renderCategoryFilter();
+        updateUserInfo();
+
+        // 绑定图片预览事件（移到这里，避免重复绑定）
+        document.getElementById('postImage').addEventListener('change', function(e) {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+            const file = e.target.files[0];
+            if (file) {
+            if (!file.type.startsWith('image/')) {
+                showNotification('请上传图片文件', 'error');
+                this.value = '';
                 return;
             }
-            const content = document.getElementById('postContent').value.trim();
-            if (!content) {
-                showNotification('请输入帖子内容！', 'error');
+            if (file.size > 5*1024*1024) {
+                showNotification('图片大小不能超过5MB', 'error');
+                this.value = '';
                 return;
             }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = document.createElement('img');
+                img.src = event.target.result;
+                img.style.maxWidth = '100%';
+                img.style.borderRadius = '10px';
+                img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                previewContainer.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+            }
+        });
+
+        // 其他原有事件绑定...
+        });
+
+        // 提取保存帖子的逻辑为单独函数
+        function savePost(content, imageData) {
+            if (!content && !imageData) {
+                showNotification('帖子内容不能为空', 'error');
+                return;
+            }
+            
             const newPost = {
                 id: Date.now(), // 使用时间戳作为唯一ID
-                author: currentUser.username,
                 content: content,
+                image: imageData, // 存储图片的base64数据
+                author: currentUser,
                 time: new Date().toLocaleString('zh-CN'),
                 likes: 0,
-                likedBy: [], // 记录点赞的用户
+                likedBy: [],
                 comments: []
             };
-            posts.unshift(newPost);
-            saveToLocalStorage(); // 保存到本地存储
-            renderPosts();
+            
+            posts.unshift(newPost); // 添加到帖子列表开头
+            saveToLocalStorage();
+            renderPosts(); // 重新渲染帖子列表
+            
+            // 清空表单
             document.getElementById('postContent').value = '';
-            showNotification('帖子发布成功！', 'success');
+            document.getElementById('postImage').value = '';
+            document.getElementById('imagePreview').innerHTML = '';
+            
+            showNotification('帖子发布成功', 'success');
         }
+
+                
+
+
 
         function likePost(postId) {
             if (!currentUser) {
@@ -1286,102 +1412,103 @@
         }
 
         function deletePost(postId) {
-            if (!currentUser) {
-                showNotification('请先登录！', 'error');
-                openAuthModal();
-                return;
-            }
-            const postIndex = posts.findIndex(p => p.id === postId);
-            if (postIndex === -1) return;
-            // 检查是否是该用户的帖子
-            const post = posts[postIndex];
-            if (post.author !== currentUser.username) {
-                showNotification('您只能删除自己发布的帖子！', 'error');
-                return;
-            }
-            if (confirm('确定要删除这个帖子吗？')) {
-                posts.splice(postIndex, 1);
-                saveToLocalStorage(); // 保存到本地存储
-                renderPosts();
-                showNotification('帖子删除成功！', 'success');
-            }
+        if (!currentUser) {
+            showNotification('请先登录！', 'error');
+            openAuthModal();
+            return;
+        }
+        const postIndex = posts.findIndex(p => p.id === postId);
+        if (postIndex === -1) return;
+        const post = posts[postIndex];
+        // 关键修复：取 post.author.username 与 currentUser.username 对比
+        if (post.author.username !== currentUser.username) {
+            showNotification('您只能删除自己发布的帖子！', 'error');
+            return;
+        }
+        if (confirm('确定要删除这个帖子吗？')) {
+            posts.splice(postIndex, 1);
+            saveToLocalStorage();
+            renderPosts();
+            showNotification('帖子删除成功！', 'success');
+        }
         }
 
         function renderPosts() {
-            const postsList = document.getElementById('postsList');
-            postsList.innerHTML = '';
+        const postsList = document.getElementById('postsList');
+        postsList.innerHTML = '';
 
-            if (posts.length === 0) {
-                postsList.innerHTML = '<p style="text-align:center; color:#777; padding:30px;">暂无帖子，请发布第一个帖子吧！</p>';
-                return;
+        if (posts.length === 0) {
+            postsList.innerHTML = '<p style="text-align:center; color:#777; padding:30px;">暂无帖子，请发布第一个帖子吧！</p>';
+            return;
+        }
+
+        posts.forEach(post => {
+            const postElement = document.createElement('div');
+            postElement.className = 'post-item';
+            postElement.setAttribute('data-id', post.id);
+            // 新增图片渲染逻辑
+            const imageHtml = post.image ? `<div style="margin:15px 0;"><img src="${post.image}" style="max-width:100%; border-radius:8px;"/></div>` : '';
+            postElement.innerHTML = `
+            <div class="post-header">
+                <span>${post.author.username}</span> <!-- 修复：显示 username -->
+                <span>${post.time}</span>
+            </div>
+            <div class="post-content">${post.content}</div>
+            ${imageHtml} <!-- 渲染图片 -->
+            <div class="post-meta">
+                <span>评论: ${post.comments.length}</span>
+                <span>点赞: ${post.likes}</span>
+            </div>
+            <div class="post-actions">
+                <button class="like-btn ${post.likedBy.includes(currentUser?.username) ? 'liked' : ''}"
+                        onclick="likePost(${post.id})">
+                ❤️ <span class="like-count">${post.likes}</span>
+                </button>
+                ${currentUser && post.author.username === currentUser.username ?
+                `<button class="delete-btn" onclick="deletePost(${post.id})">🗑️ 删除</button>` : ''}
+            </div>
+            `;
+            postElement.addEventListener('click', (e) => {
+            if (!e.target.closest('.post-actions')) {
+                showForumPostDetail(post.id);
             }
-
-            posts.forEach(post => {
-                const postElement = document.createElement('div');
-                postElement.className = 'post-item';
-                postElement.setAttribute('data-id', post.id);
-                postElement.innerHTML = `
-                    <div class="post-header">
-                        <span>${post.author}</span>
-                        <span>${post.time}</span>
-                    </div>
-                    <div class="post-content">${post.content}</div>
-                    <div class="post-meta">
-                        <span>评论: ${post.comments.length}</span>
-                        <span>点赞: ${post.likes}</span>
-                    </div>
-                    <div class="post-actions">
-                        <button class="like-btn ${post.likedBy.includes(currentUser?.username) ? 'liked' : ''}"
-                                onclick="likePost(${post.id})">
-                            ❤️ <span class="like-count">${post.likes}</span>
-                        </button>
-                        ${currentUser && post.author === currentUser.username ?
-                            `<button class="delete-btn" onclick="deletePost(${post.id})">🗑️ 删除</button>` : ''}
-                    </div>
-                `;
-                postElement.addEventListener('click', (e) => {
-                    // 阻止按钮点击事件冒泡到帖子卡片
-                    if (!e.target.closest('.post-actions')) {
-                        showForumPostDetail(post.id);
-                    }
-                });
-                postsList.appendChild(postElement);
             });
+            postsList.appendChild(postElement);
+        });
         }
 
         function showForumPostDetail(postId) {
-            const post = posts.find(p => p.id === postId);
-            if (!post) return;
-            currentForumPostId = postId;
+        const post = posts.find(p => p.id === postId);
+        if (!post) return;
+        currentForumPostId = postId;
 
-            // 切换到论坛帖子详情页面
-            document.getElementById('forum').classList.remove('active');
-            document.getElementById('postDetail').classList.add('active');
+        document.getElementById('forum').classList.remove('active');
+        document.getElementById('postDetail').classList.add('active');
 
-            // 渲染帖子详情
-            const detailContent = document.getElementById('forumPostDetailContent');
-            detailContent.innerHTML = `
-                <button class="back-button" onclick="goBackToForum()">← 返回论坛</button>
-                <div class="post-header">
-                    <span>${post.author}</span>
-                    <span>${post.time}</span>
-                </div>
-                <div class="post-content">${post.content}</div>
-                <div class="post-meta">
-                    <span>评论: ${post.comments.length}</span>
-                    <span>点赞: ${post.likes}</span>
-                </div>
-                <div class="post-actions">
-                    <button class="like-btn ${post.likedBy.includes(currentUser?.username) ? 'liked' : ''}"
-                            onclick="likePost(${post.id})">
-                        ❤️ <span class="like-count">${post.likes}</span>
-                    </button>
-                    ${currentUser && post.author === currentUser.username ?
-                        `<button class="delete-btn" onclick="deletePost(${post.id})">🗑️ 删除</button>` : ''}
-                </div>
-            `;
-            // 渲染评论
-            renderForumComments(postId);
+        const imageHtml = post.image ? `<div style="margin:15px 0;"><img src="${post.image}" style="max-width:100%; border-radius:8px;"/></div>` : '';
+        const detailContent = document.getElementById('forumPostDetailContent');
+        detailContent.innerHTML = `
+            <button class="back-button" onclick="goBackToForum()">← 返回论坛</button>
+            <div class="post-header">
+            <span>${post.author.username}</span> <!-- 修复：显示 username -->
+            <span>${post.time}</span>
+            </div>
+            <div class="post-content">${post.content}</div>
+            ${imageHtml} <!-- 详情页渲染图片 -->
+            <div class="post-meta">
+            <span>评论: ${post.comments.length}</span>
+            <span>点赞: ${post.likes}</span>
+            </div>
+            <div class="post-actions">
+            <button class="like-btn ${post.likedBy.includes(currentUser?.username) ? 'liked' : ''}"
+                    onclick="likePost(${post.id})">
+                ❤️ <span class="like-count">${post.likes}</span>
+            </button>
+            ${currentUser && post.author.username === currentUser.username ?
+                `<button class="delete-btn" onclick="deletePost(${post.id})">🗑️ 删除</button>` : ''}
+            </div>
+        `;
+        renderForumComments(postId);
         }
 
         function goBackToForum() {
