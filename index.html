@@ -1252,42 +1252,6 @@
 
         // 论坛相关函数
 
-
-                // 添加图片预览功能
-            document.getElementById('postImage').addEventListener('change', function(e) {
-                const previewContainer = document.getElementById('imagePreview');
-                previewContainer.innerHTML = ''; // 清空之前的预览
-                
-                const file = e.target.files[0];
-                if (file) {
-                    // 检查文件类型是否为图片
-                    if (!file.type.startsWith('image/')) {
-                        showNotification('请上传图片文件', 'error');
-                        this.value = ''; // 清空选择
-                        return;
-                    }
-                    
-                    // 检查文件大小（限制5MB以内）
-                    if (file.size > 5 * 1024 * 1024) {
-                        showNotification('图片大小不能超过5MB', 'error');
-                        this.value = ''; // 清空选择
-                        return;
-                    }
-                    
-                    // 预览图片
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        const img = document.createElement('img');
-                        img.src = event.target.result;
-                        img.style.maxWidth = '100%';
-                        img.style.borderRadius = '10px';
-                        img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                        previewContainer.appendChild(img);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
         // 替换原 submitPost 函数
         function submitPost() {
         if (!currentUser) {
