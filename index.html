@@ -818,6 +818,12 @@
                     <label for="tipCategory">分类:</label>
                     <input type="text" id="tipCategory" placeholder="如：学习方法、健康生活、校园生活等">
                 </div>
+                <!-- 新增图片上传区域 -->
+                <div class="form-group">
+                    <label for="tipImage">上传图片 (可选):</label>
+                    <input type="file" id="tipImage" accept="image/*">
+                    <div id="tipImagePreview" style="margin-top: 10px; max-width: 300px;"></div>
+                </div>
                 <button onclick="addTip()">添加妙招</button>
             </div>
 
@@ -1344,7 +1350,40 @@
             reader.readAsDataURL(file);
             }
         });
-
+        // 生活妙招图片预览事件
+        document.getElementById('tipImage').addEventListener('change', function(e) {
+            const previewContainer = document.getElementById('tipImagePreview');
+            previewContainer.innerHTML = ''; // 清空之前的预览
+            
+            const file = e.target.files[0];
+            if (file) {
+                // 检查文件类型是否为图片
+                if (!file.type.startsWith('image/')) {
+                    showNotification('请上传图片文件', 'error');
+                    this.value = ''; // 清空选择
+                    return;
+                }
+                
+                // 检查文件大小（限制5MB以内）
+                if (file.size > 5 * 1024 * 1024) {
+                    showNotification('图片大小不能超过5MB', 'error');
+                    this.value = ''; // 清空选择
+                    return;
+                }
+                
+                // 预览图片
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = document.createElement('img');
+                    img.src = event.target.result;
+                    img.style.maxWidth = '100%';
+                    img.style.borderRadius = '10px';
+                    img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    previewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
         // 其他原有事件绑定...
         });
 
@@ -1584,30 +1623,17 @@
         }
 
         // 生活小妙招相关函数
-        // 新增：添加生活妙招
-        function addTip() {
-            if (!currentUser) {
-                showNotification('请先登录后再添加妙招！', 'error');
-                openAuthModal();
-                return;
-            }
-            const title = document.getElementById('tipTitle').value.trim();
-            const content = document.getElementById('tipContent').value.trim();
-            const category = document.getElementById('tipCategory').value.trim() || '其他';
-
-            if (!title || !content) {
-                showNotification('请填写标题和内容！', 'error');
-                return;
-            }
-
+        // 新增：单独的保存妙招函数（处理异步图片）
+        function saveTip(title, content, category, imageData) {
             const newTip = {
                 id: Date.now(),
                 title: title,
                 content: content,
                 category: category,
-                author: currentUser.username,
+                author: currentUser.username, // 存储用户名（统一权限校验）
                 time: new Date().toLocaleString('zh-CN'),
-                comments: [] // 新增：评论数组
+                comments: [],
+                image: imageData // 新增：存储图片Base64
             };
 
             tips.unshift(newTip);
@@ -1619,11 +1645,55 @@
             document.getElementById('tipTitle').value = '';
             document.getElementById('tipContent').value = '';
             document.getElementById('tipCategory').value = '';
+            document.getElementById('tipImage').value = '';
+            document.getElementById('tipImagePreview').innerHTML = '';
 
             showNotification('妙招添加成功！', 'success');
         }
 
-        // 新增：删除生活妙招
+        // 重构：添加生活妙招（支持图片）
+        function addTip() {
+            if (!currentUser) {
+                showNotification('请先登录后再添加妙招！', 'error');
+                openAuthModal();
+                return;
+            }
+            const title = document.getElementById('tipTitle').value.trim();
+            const content = document.getElementById('tipContent').value.trim();
+            const category = document.getElementById('tipCategory').value.trim() || '其他';
+            const imageInput = document.getElementById('tipImage');
+            let imageData = null;
+
+            if (!title || !content) {
+                showNotification('请填写标题和内容！', 'error');
+                return;
+            }
+
+            // 处理图片上传
+            if (imageInput.files.length > 0) {
+                const file = imageInput.files[0];
+                if (!file.type.startsWith('image/')) {
+                    showNotification('请上传图片文件', 'error');
+                    imageInput.value = '';
+                    return;
+                }
+                if (file.size > 5 * 1024 * 1024) {
+                    showNotification('图片大小不能超过5MB', 'error');
+                    imageInput.value = '';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imageData = event.target.result;
+                    saveTip(title, content, category, imageData); // 异步完成后保存
+                };
+                reader.readAsDataURL(file);
+            } else {
+                saveTip(title, content, category, null); // 无图片直接保存
+            }
+        }
+
+        // 新增：删除生活妙招（权限校验）
         function deleteTip(tipId) {
             if (!currentUser) {
                 showNotification('请先登录！', 'error');
@@ -1675,7 +1745,7 @@
             renderTips(filteredTips);
         }
 
-        // 优化：渲染生活妙招（支持筛选后的列表）
+        // 优化：渲染生活妙招（支持图片预览）
         function renderTips(filteredTips = tips) {
             const tipsContainer = document.getElementById('tipsContainer');
             tipsContainer.innerHTML = '';
@@ -1689,20 +1759,26 @@
                 const tipElement = document.createElement('div');
                 tipElement.className = 'tip-card';
                 tipElement.setAttribute('data-id', tip.id);
-                // 新增：预览内容（截取前几行），完整内容在详情页显示
+                // 新增：图片预览（缩略图）
+                const imagePreviewHtml = tip.image ? 
+                    `<div style="margin:10px 0; border-radius:8px; overflow:hidden;">
+                        <img src="${tip.image}" style="width:100%; height:180px; object-fit:cover;">
+                    </div>` : '';
+                
                 tipElement.innerHTML = `
                     <div class="tip-title">💡 ${tip.title}</div>
+                    ${imagePreviewHtml} <!-- 显示图片预览 -->
                     <div class="tip-content-preview">${tip.content}</div>
                     <div class="tip-meta">
                         <span class="tip-category">${tip.category}</span>
                         <span style="color: #777;">发布者: ${tip.author}</span>
                     </div>
                 `;
-                // 新增：点击卡片进入详情页
+                // 点击卡片进入详情页
                 tipElement.addEventListener('click', () => {
                     showTipDetail(tip.id);
                 });
-                // 新增：删除按钮（阻止事件冒泡，避免触发详情页）
+                // 删除按钮（只有作者可见）
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'tip-delete-btn';
                 deleteBtn.innerHTML = '🗑️ 删除';
@@ -1710,7 +1786,6 @@
                     e.stopPropagation(); // 阻止冒泡
                     deleteTip(tip.id);
                 };
-                // 只有作者能看到删除按钮
                 if (currentUser && tip.author === currentUser.username) {
                     tipElement.querySelector('.tip-meta').appendChild(deleteBtn);
                 }
@@ -1718,7 +1793,7 @@
             });
         }
 
-        // 新增：显示妙招详情
+        // 新增：显示妙招详情（支持图片）
         function showTipDetail(tipId) {
             const tip = tips.find(t => t.id === tipId);
             if (!tip) return;
@@ -1727,6 +1802,12 @@
             // 切换到妙招详情页面
             document.getElementById('tips').classList.remove('active');
             document.getElementById('tipDetail').classList.add('active');
+
+            // 渲染图片（完整尺寸）
+            const imageHtml = tip.image ? 
+                `<div style="margin:20px 0; border-radius:10px; overflow:hidden;">
+                    <img src="${tip.image}" style="width:100%; max-height:500px; object-fit:contain;">
+                </div>` : '';
 
             // 渲染妙招详情
             const detailContent = document.getElementById('tipDetailContent');
@@ -1738,6 +1819,7 @@
                 </div>
                 <h2 style="margin: 20px 0; color: #667eea;">💡 ${tip.title}</h2>
                 <div class="post-content" style="font-size: 16px; line-height: 1.8;">${tip.content}</div>
+                ${imageHtml} <!-- 详情页显示完整图片 -->
                 <div class="post-meta" style="margin-top: 20px;">
                     <span class="tip-category">${tip.category}</span>
                     <span>评论: ${tip.comments.length}</span>
@@ -1748,15 +1830,26 @@
             // 渲染妙招评论
             renderTipComments(tipId);
         }
-
-        // 新增：返回妙招列表
         function goBackToTips() {
+            // 1. 切换标签显示状态
             document.getElementById('tipDetail').classList.remove('active');
             document.getElementById('tips').classList.add('active');
-            // 刷新列表（防止删除后数据不一致）
-            renderTips();
+            
+            // 2. 重新渲染列表（保留用户的分类筛选）
+            const selectedCategory = document.getElementById('categoryFilter').value;
+            let filteredTips = tips;
+            if (selectedCategory !== 'all') {
+                filteredTips = tips.filter(t => t.category === selectedCategory);
+            }
+            renderTips(filteredTips);
+            
+            // 3. 清空详情页内容（避免缓存）
+            document.getElementById('tipDetailContent').innerHTML = '';
+            document.getElementById('tipCommentsSection').innerHTML = '';
+            
+            // 4. 重置当前选中的妙招ID
+            currentTipId = null;
         }
-
         // 新增：渲染妙招评论
         function renderTipComments(tipId) {
             const tip = tips.find(t => t.id === tipId);
