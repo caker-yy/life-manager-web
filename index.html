@@ -163,7 +163,10 @@
             border-color: #667eea;
             box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
         }
-        .post-form button {
+        /* 统一的提交按钮样式（覆盖原有妙招/资源按钮样式） */
+        .post-form button, 
+        .tips-add-form button, 
+        .add-resource-form button {
             margin-top: 15px;
             padding: 12px 25px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -175,9 +178,16 @@
             font-size: 16px;
             transition: all 0.3s ease;
         }
-        .post-form button:hover {
+        .post-form button:hover, 
+        .tips-add-form button:hover, 
+        .add-resource-form button:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        /* 修复删除按钮样式不被覆盖 */
+        .tip-delete-btn, .delete-btn {
+            background: none !important;
+            border: none !important;
         }
         .post-item {
             background: #f8f9fa;
