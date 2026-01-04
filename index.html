@@ -1017,7 +1017,7 @@
             { username: "admin", password: "admin123" },
             { username: "student1", password: "pass123" }
         ];
-
+        let imageStorage = JSON.parse(localStorage.getItem('universityForumImages')) || {};
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
             // 从本地存储加载数据
@@ -1068,19 +1068,51 @@
             const savedTips = localStorage.getItem('universityForumTips');
             const savedResources = localStorage.getItem('universityForumResources');
             const savedUsers = localStorage.getItem('universityForumUsers');
+            // 新增：加载独立的图片存储
+            const savedImages = localStorage.getItem('universityForumImages');
+            
+            // 加载图片存储
+            if (savedImages) {
+                try {
+                    imageStorage = JSON.parse(savedImages);
+                } catch (e) {
+                    console.error('加载图片数据失败:', e);
+                    imageStorage = {};
+                }
+            }
 
+            // 加载帖子
             if (savedPosts) {
                 try {
                     posts = JSON.parse(savedPosts);
+                    // 迁移旧数据：如果posts里有直接存image的，移到imageStorage
+                    posts = posts.map(post => {
+                        if (post.image && typeof post.image === 'string' && post.image.startsWith('data:image/')) {
+                            const imageId = `post_${post.id}`;
+                            imageStorage[imageId] = post.image; // 移到图片存储
+                            return { ...post, image: imageId }; // 替换为图片ID
+                        }
+                        return post;
+                    });
                 } catch (e) {
                     console.error('加载帖子数据失败:', e);
                     posts = [];
                 }
             }
 
+            // 加载妙招
             if (savedTips) {
                 try {
                     tips = JSON.parse(savedTips);
+                    // 迁移旧数据：如果tips里有直接存image的，移到imageStorage
+                    tips = tips.map(tip => {
+                        if (tip.image && typeof tip.image === 'string' && tip.image.startsWith('data:image/')) {
+                            const imageId = `tip_${tip.id}`;
+                            imageStorage[imageId] = tip.image; // 移到图片存储
+                            return { ...tip, image: imageId }; // 替换为图片ID
+                        }
+                        return tip;
+                    });
                 } catch (e) {
                     console.error('加载小妙招数据失败:', e);
                     tips = [
@@ -1097,6 +1129,7 @@
                 }
             }
 
+            // 加载资源
             if (savedResources) {
                 try {
                     resources = JSON.parse(savedResources);
@@ -1106,6 +1139,7 @@
                 }
             }
 
+            // 加载用户
             if (savedUsers) {
                 try {
                     users = JSON.parse(savedUsers);
@@ -1117,8 +1151,63 @@
                     ];
                 }
             }
+            
+            // 保存迁移后的数据（确保旧数据迁移生效）
+            saveImageStorage();
+            saveToLocalStorage();
         }
 
+        // 新增：保存图片存储到localStorage
+        function saveImageStorage() {
+            try {
+                localStorage.setItem('universityForumImages', JSON.stringify(imageStorage));
+            } catch (e) {
+                console.error('保存图片数据失败（可能超出配额）:', e);
+                showNotification('图片存储已满，无法保存新图片！', 'error');
+            }
+        }
+
+        // 新增：图片压缩函数（核心优化）
+        function compressImage(file, maxWidth = 800, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                if (!file.type.startsWith('image/')) {
+                    reject(new Error('不是图片文件'));
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function () {
+                        // 创建canvas压缩
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        // 按宽度等比缩放
+                        if (width > maxWidth) {
+                            height = height * (maxWidth / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        // 绘制压缩后的图片
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // 转Base64（控制质量）
+                        const compressedDataUrl = canvas.toDataURL(file.type, quality);
+                        resolve(compressedDataUrl);
+                    };
+                    img.onerror = reject;
+                };
+                reader.onerror = reject;
+            });
+        }
         // 用户系统相关函数
         function switchAuthTab(tab) {
             if (tab === 'login') {
@@ -1253,38 +1342,37 @@
         // 论坛相关函数
 
         // 替换原 submitPost 函数
-        function submitPost() {
-        if (!currentUser) {
-            showNotification('请先登录', 'error');
-            openAuthModal();
-            return;
-        }
-        
-        const content = document.getElementById('postContent').value.trim();
-        const imageInput = document.getElementById('postImage');
-        let imageData = null;
-        
-        if (imageInput.files.length > 0) {
-            const file = imageInput.files[0];
-            if (!file.type.startsWith('image/')) {
-            showNotification('请上传图片文件', 'error');
-            imageInput.value = '';
-            return;
+        // 重构：帖子发布（压缩+分离存储）
+        async function submitPost() {
+            if (!currentUser) {
+                showNotification('请先登录', 'error');
+                openAuthModal();
+                return;
             }
-            if (file.size > 5*1024*1024) {
-            showNotification('图片大小不能超过5MB', 'error');
-            imageInput.value = '';
-            return;
+
+            const content = document.getElementById('postContent').value.trim();
+            const imageInput = document.getElementById('postImage');
+            let imageId = null; // 改为存储图片ID
+
+            // 处理图片上传（压缩+分离存储）
+            if (imageInput.files.length > 0) {
+                try {
+                    const file = imageInput.files[0];
+                    // 压缩图片（宽度800，质量0.7）
+                    const compressedImage = await compressImage(file, 800, 0.7);
+                    const postId = Date.now(); // 提前生成帖子ID
+                    imageId = `post_${postId}`; // 图片ID格式：post_帖子ID
+                    imageStorage[imageId] = compressedImage; // 存入独立图片存储
+                    saveImageStorage(); // 保存图片
+                } catch (e) {
+                    showNotification('图片压缩失败：' + e.message, 'error');
+                    imageInput.value = '';
+                    return;
+                }
             }
-            const reader = new FileReader();
-            reader.onload = function(event) {
-            imageData = event.target.result;
-            savePost(content, imageData); // 异步完成后保存
-            };
-            reader.readAsDataURL(file);
-        } else {
-            savePost(content, null);
-        }
+
+            // 保存帖子（只存图片ID，不存Base64）
+            savePost(content, imageId);
         }
 
         // 在 DOMContentLoaded 中绑定图片预览事件（替换原代码中错误位置的绑定）
@@ -1297,97 +1385,105 @@
         updateUserInfo();
 
         // 绑定图片预览事件（移到这里，避免重复绑定）
-        document.getElementById('postImage').addEventListener('change', function(e) {
+        // 帖子图片预览（新增压缩预览）
+        document.getElementById('postImage').addEventListener('change', async function(e) {
             const previewContainer = document.getElementById('imagePreview');
             previewContainer.innerHTML = '';
             const file = e.target.files[0];
             if (file) {
-            if (!file.type.startsWith('image/')) {
-                showNotification('请上传图片文件', 'error');
-                this.value = '';
-                return;
-            }
-            if (file.size > 5*1024*1024) {
-                showNotification('图片大小不能超过5MB', 'error');
-                this.value = '';
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = document.createElement('img');
-                img.src = event.target.result;
-                img.style.maxWidth = '100%';
-                img.style.borderRadius = '10px';
-                img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                previewContainer.appendChild(img);
-            };
-            reader.readAsDataURL(file);
+                try {
+                    if (!file.type.startsWith('image/')) {
+                        showNotification('请上传图片文件', 'error');
+                        this.value = '';
+                        return;
+                    }
+                    // 压缩预览（和上传逻辑一致）
+                    const compressedImage = await compressImage(file, 800, 0.7);
+                    const img = document.createElement('img');
+                    img.src = compressedImage;
+                    img.style.maxWidth = '100%';
+                    img.style.borderRadius = '10px';
+                    img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    previewContainer.appendChild(img);
+                    // 显示压缩提示
+                    const tip = document.createElement('p');
+                    tip.style.fontSize = '12px';
+                    tip.style.color = '#667eea';
+                    tip.style.marginTop = '8px';
+                    tip.textContent = `图片已压缩（原大小：${(file.size/1024).toFixed(1)}KB → 预估：${(compressedImage.length*0.75/1024).toFixed(1)}KB）`;
+                    previewContainer.appendChild(tip);
+                } catch (e) {
+                    showNotification('图片预览失败：' + e.message, 'error');
+                    this.value = '';
+                }
             }
         });
         // 生活妙招图片预览事件
-        document.getElementById('tipImage').addEventListener('change', function(e) {
+        // 妙招图片预览（压缩预览）
+        document.getElementById('tipImage').addEventListener('change', async function(e) {
             const previewContainer = document.getElementById('tipImagePreview');
             previewContainer.innerHTML = ''; // 清空之前的预览
             
             const file = e.target.files[0];
             if (file) {
-                // 检查文件类型是否为图片
-                if (!file.type.startsWith('image/')) {
-                    showNotification('请上传图片文件', 'error');
-                    this.value = ''; // 清空选择
-                    return;
-                }
-                
-                // 检查文件大小（限制5MB以内）
-                if (file.size > 5 * 1024 * 1024) {
-                    showNotification('图片大小不能超过5MB', 'error');
-                    this.value = ''; // 清空选择
-                    return;
-                }
-                
-                // 预览图片
-                const reader = new FileReader();
-                reader.onload = function(event) {
+                try {
+                    // 检查文件类型是否为图片
+                    if (!file.type.startsWith('image/')) {
+                        showNotification('请上传图片文件', 'error');
+                        this.value = ''; // 清空选择
+                        return;
+                    }
+                    
+                    // 压缩预览（和上传逻辑一致）
+                    const compressedImage = await compressImage(file, 800, 0.7);
                     const img = document.createElement('img');
-                    img.src = event.target.result;
+                    img.src = compressedImage;
                     img.style.maxWidth = '100%';
                     img.style.borderRadius = '10px';
                     img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                     previewContainer.appendChild(img);
-                };
-                reader.readAsDataURL(file);
+                    
+                    // 显示压缩提示
+                    const tip = document.createElement('p');
+                    tip.style.fontSize = '12px';
+                    tip.style.color = '#667eea';
+                    tip.style.marginTop = '8px';
+                    tip.textContent = `图片已压缩（原大小：${(file.size/1024).toFixed(1)}KB → 预估：${(compressedImage.length*0.75/1024).toFixed(1)}KB）`;
+                    previewContainer.appendChild(tip);
+                } catch (e) {
+                    showNotification('图片预览失败：' + e.message, 'error');
+                    this.value = ''; // 清空选择
+                }
             }
         });
-        // 其他原有事件绑定...
-        });
-
-        // 提取保存帖子的逻辑为单独函数
-        function savePost(content, imageData) {
-            if (!content && !imageData) {
+    }); 
+        // 重构：保存帖子（存储图片ID而非Base64）
+        function savePost(content, imageId) {
+            if (!content && !imageId) {
                 showNotification('帖子内容不能为空', 'error');
                 return;
             }
-            
+
             const newPost = {
                 id: Date.now(), // 使用时间戳作为唯一ID
                 content: content,
-                image: imageData, // 存储图片的base64数据
+                image: imageId, // 只存图片ID（如post_1735689600000）
                 author: currentUser,
                 time: new Date().toLocaleString('zh-CN'),
                 likes: 0,
                 likedBy: [],
                 comments: []
             };
-            
+
             posts.unshift(newPost); // 添加到帖子列表开头
-            saveToLocalStorage();
+            saveToLocalStorage(); // 保存帖子数据（无图片）
             renderPosts(); // 重新渲染帖子列表
-            
+
             // 清空表单
             document.getElementById('postContent').value = '';
             document.getElementById('postImage').value = '';
             document.getElementById('imagePreview').innerHTML = '';
-            
+
             showNotification('帖子发布成功', 'success');
         }
 
@@ -1425,25 +1521,30 @@
         }
 
         function deletePost(postId) {
-        if (!currentUser) {
-            showNotification('请先登录！', 'error');
-            openAuthModal();
-            return;
-        }
-        const postIndex = posts.findIndex(p => p.id === postId);
-        if (postIndex === -1) return;
-        const post = posts[postIndex];
-        // 关键修复：取 post.author.username 与 currentUser.username 对比
-        if (post.author.username !== currentUser.username) {
-            showNotification('您只能删除自己发布的帖子！', 'error');
-            return;
-        }
-        if (confirm('确定要删除这个帖子吗？')) {
-            posts.splice(postIndex, 1);
-            saveToLocalStorage();
-            renderPosts();
-            showNotification('帖子删除成功！', 'success');
-        }
+            if (!currentUser) {
+                showNotification('请先登录！', 'error');
+                openAuthModal();
+                return;
+            }
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex === -1) return;
+            const post = posts[postIndex];
+            // 关键修复：取 post.author.username 与 currentUser.username 对比
+            if (post.author.username !== currentUser.username) {
+                showNotification('您只能删除自己发布的帖子！', 'error');
+                return;
+            }
+            if (confirm('确定要删除这个帖子吗？')) {
+                // 同步删除图片
+                if (post.image && imageStorage[post.image]) {
+                    delete imageStorage[post.image];
+                    saveImageStorage(); // 保存图片存储
+                }
+                posts.splice(postIndex, 1);
+                saveToLocalStorage();
+                renderPosts();
+                showNotification('帖子删除成功！', 'success');
+            }
         }
 
         function renderPosts() {
@@ -1460,7 +1561,9 @@
             postElement.className = 'post-item';
             postElement.setAttribute('data-id', post.id);
             // 新增图片渲染逻辑
-            const imageHtml = post.image ? `<div style="margin:15px 0;"><img src="${post.image}" style="max-width:100%; border-radius:8px;"/></div>` : '';
+            // 根据图片ID从imageStorage读取图片
+            const imageData = post.image ? imageStorage[post.image] : null;
+            const imageHtml = imageData ? `<div style="margin:15px 0;"><img src="${imageData}" style="max-width:100%; border-radius:8px;"/></div>` : '';
             postElement.innerHTML = `
             <div class="post-header">
                 <span>${post.author.username}</span> <!-- 修复：显示 username -->
@@ -1498,7 +1601,8 @@
         document.getElementById('forum').classList.remove('active');
         document.getElementById('postDetail').classList.add('active');
 
-        const imageHtml = post.image ? `<div style="margin:15px 0;"><img src="${post.image}" style="max-width:100%; border-radius:8px;"/></div>` : '';
+        const imageData = post.image ? imageStorage[post.image] : null;
+        const imageHtml = imageData ? `<div style="margin:15px 0;"><img src="${imageData}" style="max-width:100%; border-radius:8px;"/></div>` : '';
         const detailContent = document.getElementById('forumPostDetailContent');
         detailContent.innerHTML = `
             <button class="back-button" onclick="goBackToForum()">← 返回论坛</button>
@@ -1597,8 +1701,7 @@
         }
 
         // 生活小妙招相关函数
-        // 新增：单独的保存妙招函数（处理异步图片）
-        function saveTip(title, content, category, imageData) {
+        function saveTip(title, content, category, imageId) {
             const newTip = {
                 id: Date.now(),
                 title: title,
@@ -1607,7 +1710,7 @@
                 author: currentUser.username, // 存储用户名（统一权限校验）
                 time: new Date().toLocaleString('zh-CN'),
                 comments: [],
-                image: imageData // 新增：存储图片Base64
+                image: imageId // 只存图片ID（如tip_1735689600000）
             };
 
             tips.unshift(newTip);
@@ -1622,11 +1725,11 @@
             document.getElementById('tipImage').value = '';
             document.getElementById('tipImagePreview').innerHTML = '';
 
-            showNotification('妙招添加成功！', 'success');
+            showNotification('妙招添加成功（图片已压缩）', 'success');
         }
 
-        // 重构：添加生活妙招（支持图片）
-        function addTip() {
+        // 重构：添加妙招（压缩+分离存储）
+        async function addTip() {
             if (!currentUser) {
                 showNotification('请先登录后再添加妙招！', 'error');
                 openAuthModal();
@@ -1636,35 +1739,32 @@
             const content = document.getElementById('tipContent').value.trim();
             const category = document.getElementById('tipCategory').value.trim() || '其他';
             const imageInput = document.getElementById('tipImage');
-            let imageData = null;
+            let imageId = null; // 改为存储图片ID
 
             if (!title || !content) {
                 showNotification('请填写标题和内容！', 'error');
                 return;
             }
 
-            // 处理图片上传
+            // 处理图片上传（压缩+分离存储）
             if (imageInput.files.length > 0) {
-                const file = imageInput.files[0];
-                if (!file.type.startsWith('image/')) {
-                    showNotification('请上传图片文件', 'error');
+                try {
+                    const file = imageInput.files[0];
+                    // 压缩图片（宽度800，质量0.7）
+                    const compressedImage = await compressImage(file, 800, 0.7);
+                    const tipId = Date.now(); // 提前生成妙招ID
+                    imageId = `tip_${tipId}`; // 图片ID格式：tip_妙招ID
+                    imageStorage[imageId] = compressedImage; // 存入独立图片存储
+                    saveImageStorage(); // 保存图片
+                } catch (e) {
+                    showNotification('图片压缩失败：' + e.message, 'error');
                     imageInput.value = '';
                     return;
                 }
-                if (file.size > 5 * 1024 * 1024) {
-                    showNotification('图片大小不能超过5MB', 'error');
-                    imageInput.value = '';
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    imageData = event.target.result;
-                    saveTip(title, content, category, imageData); // 异步完成后保存
-                };
-                reader.readAsDataURL(file);
-            } else {
-                saveTip(title, content, category, null); // 无图片直接保存
             }
+
+            // 保存妙招（只存图片ID）
+            saveTip(title, content, category, imageId);
         }
 
         // 新增：删除生活妙招（权限校验）
@@ -1685,6 +1785,11 @@
             }
 
             if (confirm('确定要删除这个妙招吗？')) {
+                // 同步删除图片
+                if (tip.image && imageStorage[tip.image]) {
+                    delete imageStorage[tip.image];
+                    saveImageStorage(); // 保存图片存储
+                }
                 tips.splice(tipIndex, 1);
                 saveToLocalStorage();
                 renderTips();
@@ -1733,12 +1838,13 @@
                 const tipElement = document.createElement('div');
                 tipElement.className = 'tip-card';
                 tipElement.setAttribute('data-id', tip.id);
-                // 新增：图片预览（缩略图）
-                const imagePreviewHtml = tip.image ? 
+                // 根据图片ID读取图片
+                const imageData = tip.image ? imageStorage[tip.image] : null;
+                const imagePreviewHtml = imageData ? 
                     `<div style="margin:10px 0; border-radius:8px; overflow:hidden;">
-                        <img src="${tip.image}" style="width:100%; height:180px; object-fit:cover;">
+                        <img src="${imageData}" style="width:100%; height:180px; object-fit:cover;">
                     </div>` : '';
-                
+                                
                 tipElement.innerHTML = `
                     <div class="tip-title">💡 ${tip.title}</div>
                     ${imagePreviewHtml} <!-- 显示图片预览 -->
@@ -1778,9 +1884,10 @@
             document.getElementById('tipDetail').classList.add('active');
 
             // 渲染图片（完整尺寸）
-            const imageHtml = tip.image ? 
+            const imageData = tip.image ? imageStorage[tip.image] : null;
+            const imageHtml = imageData ? 
                 `<div style="margin:20px 0; border-radius:10px; overflow:hidden;">
-                    <img src="${tip.image}" style="width:100%; max-height:500px; object-fit:contain;">
+                    <img src="${imageData}" style="width:100%; max-height:500px; object-fit:contain;">
                 </div>` : '';
 
             // 渲染妙招详情
